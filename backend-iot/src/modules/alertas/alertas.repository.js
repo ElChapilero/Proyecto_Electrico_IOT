@@ -1,0 +1,1 @@
+// Consultas PostgreSQL para alertas.

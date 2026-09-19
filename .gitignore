@@ -1,0 +1,38 @@
+# Secretos y configuración local
+.env
+.env.*
+!.env.example
+*.local
+
+# Dependencias y salidas de compilación
+**/node_modules/
+**/dist/
+**/build/
+**/.cache/
+
+# Logs, bases y datos generados localmente
+**/*.log
+**/log/
+**/data/
+**/*.db
+
+# Claves, certificados y credenciales del broker
+**/config/certs/*
+!**/config/certs/README.md
+**/config/passwd
+**/config/acl.conf
+
+# Configuración local del firmware ESP32
+esp32-firmware/firmware_config.h
+
+# Archivos locales de IDE/sistema
+.vscode/
+.idea/
+*.code-workspace
+Thumbs.db
+Desktop.ini
+
+# Archivos temporales
+*.tmp
+*.swp
+*.swo

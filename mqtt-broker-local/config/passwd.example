@@ -1,0 +1,5 @@
+# No pongas contraseñas en texto plano ni copies este archivo como passwd.
+# Genera el archivo real con:
+#   mosquitto_passwd -c config/passwd backend_listener
+#   mosquitto_passwd config/passwd esp32-IDENTIFICADOR
+# El archivo real config/passwd queda ignorado por Git.

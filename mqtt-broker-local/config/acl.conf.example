@@ -1,0 +1,11 @@
+# Copia este archivo como acl.conf y agrega los usuarios reales solo en tu máquina.
+pattern readwrite casa/%u/#
+
+user backend_listener
+topic read casa/+/mediciones
+topic read casa/+/estado
+topic write casa/+/comandos
+
+# Para cada dispositivo registrado, el backend puede agregar:
+# user esp32-IDENTIFICADOR
+# topic readwrite casa/esp32-IDENTIFICADOR/#
