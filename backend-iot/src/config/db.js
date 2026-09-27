@@ -3,11 +3,12 @@
 
 const { Pool } = require('pg');
 require('dotenv').config();
+const { databaseUrl } = require('./env');
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  // Si preferis variables sueltas en vez de connectionString, comenta
-  // la linea de arriba y descomenta estas:
+  connectionString: databaseUrl,
+  // Si  se prefiere variables sueltas en vez de connectionString, comentar
+  // la linea de arriba y descomentar estas:
   // host: process.env.PGHOST,
   // port: process.env.PGPORT || 5432,
   // user: process.env.PGUSER,
