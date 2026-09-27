@@ -1,26 +1,24 @@
-// mqttListener.js
-//
-// Este archivo escucha los mensajes que llegan del broker MQTT
-// (Mosquitto), valida cada lectura del sensor PZEM-004T con el
-// validador de "../modules/mediciones/pzemValidator", y solo si la lectura es
-// válida la guarda en PostgreSQL. Recién cuando terminó de guardar todo
-// el paquete, avisa al frontend por Socket.IO.
-//
-// Cambios respecto a la versión anterior:
-//   1) Se renombraron las variables de una sola letra ("m", "c") por
-//      nombres completos y descriptivos ("medidor", "filaCircuito").
-//   2) Se agregó el validador por capas (estructura/tipos, rangos,
-//      consistencia voltaje x corriente x factor_potencia ≈ potencia)
-//      antes de guardar cualquier dato en la base de datos.
-//   3) Se agregó un cache en memoria con la última lectura válida de
-//      cada circuito, para poder generar advertencias comparativas
-//      (sin rechazar) frente a la lectura anterior.
-//   4) Se agregó una protección liviana contra mensajes MQTT
-//      duplicados, que pueden llegar a repetirse por cómo funciona
-//      QoS 1 (ver el comentario junto a "esMensajeDuplicado" más abajo).
-//   5) El reenvío en vivo a Socket.IO YA NO retransmite el paquete
-//      crudo tal cual llega de MQTT: primero se valida y se guarda, y
-//      solo se emite lo que realmente quedó guardado en PostgreSQL.
+// Este archivo escucha los mensajes que llegan desde Mosquitto, valida
+// las lecturas del PZEM-004T y guarda en PostgreSQL solo los datos válidos.
+// Cuando termina de guardar el paquete, informa al frontend por Socket.IO.
+
+// Cambios principales:
+// 1) Se cambiaron nombres cortos como "m" y "c" por nombres más claros.
+// 2) Se agregó la validación por capas: estructura, rangos y consistencia
+// entre voltaje, corriente, potencia y factor de potencia.
+// 3) Se guarda en memoria la última lectura válida de cada circuito para
+// poder detectar cambios llamativos sin rechazar una lectura válida.
+// 4) Se agregó una protección contra mensajes duplicados por QoS 1.
+// 5) Socket.IO solo recibe las mediciones que realmente fueron guardadas
+// en PostgreSQL.
+// 6) (Fix vulnerabilidad crítica 2.3) Las mediciones ya no se envían a
+// todos los clientes conectados. Se envían únicamente a la sala del
+// predio al que pertenece el dispositivo.
+// 7) (Fix bug crítico 1.1) Cada medición guardada se revisa contra las
+// alertas activas de su circuito para registrar las alertas que correspondan.
+// 8) (Fix bug importante 3.1) La información del dispositivo se guarda en
+// un cache separado que puede invalidarse cuando cambia su panel, predio
+// o circuitos. Así no se siguen usando datos viejos hasta reiniciar el backend.
 
 const mqtt = require('mqtt');
 const fs = require('fs');
@@ -29,13 +27,16 @@ require('dotenv').config();
 
 const pool = require('../config/db');
 const validarLecturaPzem = require('../modules/mediciones/pzemValidator');
+const alertasService = require('../modules/alertas/alertas.service');
 const { mqtt: mqttConfig } = require('../config/env');
+const { emitirMedicionGuardada, emitirEstadoDispositivo } = require('../realtime/realtime.service');
+const { obtenerInfoDispositivo } = require('./dispositivoCache');
 
 const MQTT_TLS = mqttConfig.tls;
 const MQTT_HOST = mqttConfig.host;
 const MQTT_PORT = mqttConfig.port;
 
-const MQTT_CA_FILE = process.env.MQTT_CA_FILE ||
+const MQTT_CA_FILE = mqttConfig.caFile || process.env.MQTT_CA_FILE ||
   path.join(__dirname, '../../../mqtt-broker-local/config/certs/ca.crt');
 
 const MQTT_USER = mqttConfig.listenerUser;
@@ -44,34 +45,23 @@ const MQTT_PASSWORD = mqttConfig.listenerPassword;
 const TOPIC_MEDICIONES = 'casa/+/mediciones';
 const TOPIC_ESTADO = 'casa/+/estado';
 
-// uuidEsp32 -> { [indiceCircuito]: idCircuito } (evita consultar la
-// base de datos en cada mensaje para resolver a qué circuito
-// pertenece cada medidor).
-const cacheCircuitos = new Map();
-
-// idCircuito -> última lectura válida guardada para ese circuito. Se
-// usa solo para las advertencias comparativas (capa 4 del validador),
-// nunca para rechazar una lectura. Al reiniciar el backend arranca
-// vacío, lo cual está bien: simplemente no habrá advertencias hasta
-// la segunda lectura válida de cada circuito.
+// Última lectura válida de cada circuito.
+// Se usa para las comparaciones del validador, pero nunca para rechazar
+// una lectura. Al reiniciar el backend, el cache queda vacío y vuelve a
+// llenarse con las nuevas lecturas.
 const cacheUltimaLectura = new Map();
 
-// ---------------------------------------------------------------------
 // Deduplicación de mensajes MQTT (QoS 1)
-// ---------------------------------------------------------------------
-// La suscripción de este listener usa qos: 1 ("al menos una vez"),
-// porque para mediciones que se van a guardar en la base de datos es
-// más importante no perder mensajes que evitar una posible repetición.
-// La contraparte de esa decisión es que, si el broker no recibe a
-// tiempo el PUBACK del backend, puede reintentar y entregar EL MISMO
-// mensaje más de una vez.
-//
-// Como el ESP32 ya manda un "timestamp_ms" (su reloj interno, millis())
-// en cada paquete, lo usamos junto con el uuid del dispositivo como
-// huella para reconocer un reenvío exacto del mismo paquete dentro de
-// una ventana corta de tiempo, sin necesitar tocar el firmware ni la
-// base de datos.
+// QoS 1 garantiza que el mensaje llegue al menos una vez, pero también
+// permite que el mismo mensaje se entregue más de una vez si el broker
+// no recibe a tiempo el PUBACK.
+
+// El ESP32 incluye timestamp_ms en cada paquete, así que usamos ese valor
+// junto con el uuid del dispositivo para detectar reenvíos del mismo
+// paquete dentro de una ventana corta, sin modificar el firmware ni la BD.
 const mensajesRecientes = new Map(); // "uuidEsp32:timestamp_ms" -> cuándo lo vimos
+const ultimoTimestampPorDispositivo = new Map();
+const colasPorDispositivo = new Map();
 const VENTANA_DEDUPLICACION_MS = 30000; // 30 segundos
 
 function limpiarMensajesAntiguos() {
@@ -86,6 +76,16 @@ function limpiarMensajesAntiguos() {
 function esMensajeDuplicado(uuidEsp32, timestampDispositivoMs) {
   limpiarMensajesAntiguos();
 
+  const anterior = ultimoTimestampPorDispositivo.get(uuidEsp32);
+  if (Number.isFinite(timestampDispositivoMs) && Number.isFinite(anterior) && timestampDispositivoMs < anterior) {
+    for (const clave of mensajesRecientes.keys()) {
+      if (clave.startsWith(`${uuidEsp32}:`)) mensajesRecientes.delete(clave);
+    }
+  }
+  if (Number.isFinite(timestampDispositivoMs)) {
+    ultimoTimestampPorDispositivo.set(uuidEsp32, timestampDispositivoMs);
+  }
+
   const claveMensaje = `${uuidEsp32}:${timestampDispositivoMs}`;
   if (mensajesRecientes.has(claveMensaje)) {
     return true;
@@ -93,31 +93,6 @@ function esMensajeDuplicado(uuidEsp32, timestampDispositivoMs) {
 
   mensajesRecientes.set(claveMensaje, Date.now());
   return false;
-}
-
-async function resolverCircuito(uuidEsp32, indiceCircuito) {
-  let mapaCircuitos = cacheCircuitos.get(uuidEsp32);
-
-  if (!mapaCircuitos) {
-    const dispositivo = await pool.query(
-      'SELECT id FROM dispositivos WHERE uuid_esp32 = $1',
-      [uuidEsp32]
-    );
-    if (dispositivo.rows.length === 0) return null; // dispositivo no registrado
-
-    const circuitos = await pool.query(
-      'SELECT id, indice FROM circuitos WHERE id_dispositivo = $1',
-      [dispositivo.rows[0].id]
-    );
-
-    mapaCircuitos = {};
-    circuitos.rows.forEach((filaCircuito) => {
-      mapaCircuitos[filaCircuito.indice] = filaCircuito.id;
-    });
-    cacheCircuitos.set(uuidEsp32, mapaCircuitos);
-  }
-
-  return mapaCircuitos[indiceCircuito] || null;
 }
 
 function iniciarMqttListener(io) {
@@ -137,9 +112,9 @@ function iniciarMqttListener(io) {
 
   client.on('connect', () => {
     console.log('✅ Backend conectado a Mosquitto');
-    // qos: 1 = "al menos una vez": prioriza no perder mediciones por
-    // encima de evitar una posible entrega duplicada. Por eso existe
-    // la deduplicación de más arriba.
+    // qos: 1 = al menos una vez.
+    // Se prioriza no perder mediciones, aunque pueda existir alguna entrega
+    // duplicada. La deduplicación anterior se encarga de ese caso.
     client.subscribe([TOPIC_MEDICIONES, TOPIC_ESTADO], { qos: 1 }, (err) => {
       if (err) console.error('❌ Error al suscribirse:', err.message);
       else console.log(`📡 Suscrito a: ${TOPIC_MEDICIONES} y ${TOPIC_ESTADO}`);
@@ -148,44 +123,61 @@ function iniciarMqttListener(io) {
 
   client.on('message', async (topic, payload) => {
     const uuidEsp32 = topic.split('/')[1];
+    const anterior = colasPorDispositivo.get(uuidEsp32) || Promise.resolve();
+    let liberar;
+    const turno = new Promise((resolve) => { liberar = resolve; });
+    const colaActual = anterior.then(() => turno);
+    colasPorDispositivo.set(uuidEsp32, colaActual);
+    await anterior;
+    try {
+      const infoDispositivo = await obtenerInfoDispositivo(uuidEsp32);
 
     if (topic.endsWith('/estado')) {
       const estado = payload.toString();
       console.log(`🔌 [${uuidEsp32}] estado: ${estado}`);
-      if (io) io.emit('estado-dispositivo', { uuid: uuidEsp32, estado });
+      // Si el dispositivo no está registrado no sabemos a qué predio pertenece,
+      // por lo que no se emite el estado a ninguna sala.
+      if (infoDispositivo) {
+        emitirEstadoDispositivo(io, infoDispositivo.idPredio, { uuid: uuidEsp32, estado });
+      }
       return;
     }
 
     let datos;
     try {
       datos = JSON.parse(payload.toString());
-    } catch (error) {
-      console.error('⚠️ No se pudo parsear el mensaje MQTT:', error.message);
-      return;
-    }
+      } catch (error) {
+        console.error('⚠️ No se pudo parsear el mensaje MQTT:', error.message);
+        return;
+      }
+      if (!datos || typeof datos !== 'object' || !Array.isArray(datos.medidores)) {
+        console.warn(`⚠️ Payload MQTT inválido [${uuidEsp32}]: medidores debe ser una lista`);
+        return;
+      }
 
-    // Si este mismo paquete (mismo dispositivo + mismo timestamp_ms del
-    // ESP32) ya se proceso hace poco, lo descartamos: es un reenvío de
-    // QoS 1, no una medición nueva.
-    if (datos.timestamp_ms !== undefined && esMensajeDuplicado(uuidEsp32, datos.timestamp_ms)) {
+    // Si este mismo paquete ya fue procesado recientemente, se descarta.
+    // Esto puede ocurrir con QoS 1 cuando el broker vuelve a entregar
+    // exactamente el mismo mensaje.
+    const timestampDispositivo = Number(datos.timestamp_ms);
+    if (Number.isSafeInteger(timestampDispositivo) && esMensajeDuplicado(uuidEsp32, timestampDispositivo)) {
       console.warn(`♻️ Mensaje duplicado descartado (QoS 1) [${uuidEsp32}] timestamp_ms=${datos.timestamp_ms}`);
       return;
     }
 
-    const listaMedidores = datos.medidores || [];
-    // Todas las lecturas de un mismo JSON representan un único paquete.
-    // Se usa una sola marca temporal para agrupar sus circuitos.
+    const listaMedidores = datos.medidores;
+    // Todas las lecturas de este JSON pertenecen al mismo paquete, por lo que
+    // se usa una sola marca de tiempo del backend para guardarlas.
     const recibidoEn = new Date();
 
-    // Acá se van juntando SOLO las lecturas que pasaron la validación y
-    // que efectivamente se insertaron en PostgreSQL. Es la lista que
-    // más abajo se manda por Socket.IO: nunca se emite un dato que no
-    // haya quedado guardado en la base de datos.
+    // Acá se guardan solo las lecturas que pasaron la validación y además
+    // fueron insertadas correctamente en PostgreSQL. Esa misma lista se usa
+    // después para Socket.IO, así el frontend nunca recibe datos que no
+    // quedaron guardados.
     const medicionesGuardadas = [];
 
     for (const medidor of listaMedidores) {
       try {
-        const idCircuito = await resolverCircuito(uuidEsp32, medidor.circuito);
+        const idCircuito = infoDispositivo?.porIndice[medidor.circuito];
 
         if (!idCircuito) {
           console.warn(`⚠️ Dispositivo/circuito desconocido: ${uuidEsp32} circuito ${medidor.circuito} (¿ya se registró?)`);
@@ -202,23 +194,33 @@ function iniciarMqttListener(io) {
           continue; // no se guarda en la base de datos
         }
 
-        // Las advertencias NO bloquean el guardado, solo quedan en el
-        // log para que puedan revisarse después (por ejemplo, un
-        // reinicio del contador de energía del dispositivo).
+        // Las advertencias son solo informativas. No bloquean el guardado.
         (resultadoValidacion.advertencias || []).forEach((textoAdvertencia) => {
           console.warn(`⚠️ [${uuidEsp32} circuito ${medidor.circuito}] ${textoAdvertencia}`);
         });
 
-        await pool.query(
+        const filaMedicion = await pool.query(
           `INSERT INTO mediciones (circuito_id, potencia, energia, voltaje, corriente, frecuencia, factor_potencia, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
           [idCircuito, medidor.potencia, medidor.energia, medidor.voltaje, medidor.corriente, medidor.frecuencia, medidor.factor_potencia, recibidoEn]
         );
+        const idMedicion = filaMedicion.rows[0].id;
 
-        // Se actualiza el cache de "última lectura" recién acá, DESPUÉS
-        // de guardar, para que la próxima comparación sea siempre
-        // contra un dato que sí quedó persistido.
+        // Se actualiza la última lectura únicamente después de confirmar el INSERT.
+        // Así la siguiente comparación siempre parte de un dato que sí quedó
+        // guardado en PostgreSQL.
         cacheUltimaLectura.set(idCircuito, medidor);
+
+        // (Fix bug crítico 1.1)
+        // Después de guardar la medición se revisan las alertas configuradas
+        // para ese circuito y se registran las que correspondan.
+        await alertasService.evaluarYRegistrarAlertas(
+          idCircuito,
+          medidor,
+          idMedicion,
+          io,
+          infoDispositivo.idPredio,
+        );
 
         medicionesGuardadas.push({
           circuito: medidor.circuito,
@@ -247,44 +249,32 @@ function iniciarMqttListener(io) {
     console.log(
       `📥 [${uuidEsp32}] paquete procesado: ${medicionesGuardadas.length} de ${listaMedidores.length} lecturas guardadas`
     );
-
-    // ------------------------------------------------------------------
     // Reenvío en vivo al dashboard (Socket.IO)
-    // ------------------------------------------------------------------
-    // OJO: acá NO hay que reenviar el payload crudo tal cual llega de
-    // MQTT apenas se recibe. Si se hiciera así:
-    //   - Podría traer lecturas fuera de rango o inconsistentes que el
-    //     validador de arriba acaba de rechazar, y el frontend
-    //     mostraría un dato que en realidad nunca se guardó.
-    //   - Si el INSERT de un circuito falla, el frontend ya se habría
-    //     enterado igual de un dato que no quedó en la base de datos.
-    // Por eso primero se valida y se guarda en PostgreSQL (todo el
-    // bloque de arriba), y recién acá, con el guardado ya confirmado,
-    // se emite SOLO lo que efectivamente quedó en la base de datos.
-    //
-    // Así es como NO se debe hacer (se deja comentado a modo de
-    // referencia, era el comportamiento anterior):
-    //
-    // if (io) {
-    //   io.emit('mensaje-mqtt', { topic, datos, timestamp: new Date().toISOString() });
-    // }
+    // No se envía el payload original directamente desde MQTT.
+    // Primero se valida y se guarda en PostgreSQL.
+    // Así se evita que el frontend muestre:
+    // - lecturas que el validador rechazó;
+    // - lecturas de un circuito cuyo INSERT falló.
+    // Por eso Socket.IO recibe únicamente las mediciones confirmadas en la BD.
+    // Tampoco se usa io.emit() global.
 
-    if (io && medicionesGuardadas.length > 0) {
-      io.emit('mensaje-mqtt', {
+    // (Fix vulnerabilidad crítica 2.3)
+    // El evento se envía únicamente a la sala del predio correspondiente,
+    // para que un cliente no pueda recibir mediciones de otros predios.
+    if (medicionesGuardadas.length > 0 && infoDispositivo) {
+      emitirMedicionGuardada(io, infoDispositivo.idPredio, {
         topic,
         uuid_esp32: uuidEsp32,
         medidores: medicionesGuardadas,
-        // Momento en el que el BACKEND generó este evento de
-        // Socket.IO (no necesariamente el instante exacto en el que
-        // el ESP32 tomó la medición).
         timestamp: new Date().toISOString(),
-        // Instante del ESP32 en el momento de armar el paquete
-        // (millis() = milisegundos desde que arrancó el
-        // dispositivo). Sirve para ordenar/agrupar paquetes del mismo
-        // dispositivo, pero OJO: no es una fecha real salvo que el
-        // firmware se sincronice con NTP.
         timestamp_dispositivo_ms: datos.timestamp_ms ?? null,
       });
+    }
+    } catch (error) {
+      console.error('❌ Error no controlado procesando mensaje MQTT:', error.message);
+    } finally {
+      liberar();
+      if (colasPorDispositivo.get(uuidEsp32) === colaActual) colasPorDispositivo.delete(uuidEsp32);
     }
   });
 
