@@ -1,4 +1,3 @@
-// accesoHelpers.js
 // Funciones compartidas para chequear permisos vía accesos_predio.
 // No es un router - lo requieren predios/paneles/dispositivos/
 // circuitos.routes.js para no repetir esta logica en cada archivo.
@@ -57,6 +56,32 @@ async function predioDeCircuito(idCircuito) {
   return fila.rows[0]?.id_predio || null;
 }
 
+// Dado un id_dispositivo, su uuid_esp32. Se usa para invalidar el cache
+// en memoria de mqttListener.js (ver mqtt/dispositivoCache.js) cuando
+// se crea un circuito nuevo para ese dispositivo.
+async function uuidEsp32DeDispositivo(idDispositivo) {
+  const fila = await pool.query(
+    'SELECT uuid_esp32 FROM dispositivos WHERE id = $1',
+    [idDispositivo]
+  );
+  return fila.rows[0]?.uuid_esp32 || null;
+}
+
+// Dado un id_circuito, el uuid_esp32 del dispositivo al que pertenece.
+// Mismo uso que la anterior, pero para cuando se va a BORRAR el
+// circuito: hay que consultarlo ANTES del DELETE (después, el JOIN ya
+// no encuentra la fila).
+async function uuidEsp32DeCircuito(idCircuito) {
+  const fila = await pool.query(
+    `SELECT d.uuid_esp32
+     FROM circuitos c
+     JOIN dispositivos d ON d.id = c.id_dispositivo
+     WHERE c.id = $1`,
+    [idCircuito]
+  );
+  return fila.rows[0]?.uuid_esp32 || null;
+}
+
 module.exports = {
   obtenerRol,
   esAdministrador,
@@ -64,4 +89,6 @@ module.exports = {
   predioDePanel,
   predioDeDispositivo,
   predioDeCircuito,
+  uuidEsp32DeDispositivo,
+  uuidEsp32DeCircuito,
 };
