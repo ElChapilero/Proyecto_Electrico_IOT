@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "echo \"Use npm run test:api con PostgreSQL y el backend activos\"",
+    "test:api": "node api-test.js",
     "dev": "nodemon server.js",
     "start": "node server.js"
   },
