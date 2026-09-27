@@ -1,7 +1,6 @@
 // authMiddleware.js
 const jwt = require('jsonwebtoken');
-
-const JWT_SECRET = process.env.JWT_SECRET || 'CAMBIAR_ESTO_EN_.ENV';
+const { jwtSecret } = require('../config/env');
 
 function requiereAuth(req, res, next) {
   const header = req.headers.authorization || '';
@@ -12,7 +11,7 @@ function requiereAuth(req, res, next) {
   }
 
   try {
-    req.usuario = jwt.verify(token, JWT_SECRET); // { id, email }
+    req.usuario = jwt.verify(token, jwtSecret); // { id, email }
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Token invalido o expirado' });
