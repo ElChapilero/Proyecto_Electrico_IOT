@@ -1,29 +1,16 @@
-// pzemValidator.js
-//
-// Validador de las lecturas que llegan del sensor PZEM-004T (a través del
-// ESP32 y del broker MQTT) antes de guardarlas en PostgreSQL.
-//
-// La validación se hace en capas, de la más básica a la más específica:
-//
-//   1) Estructura y tipos   -> ¿llegaron los 6 campos y son numéricos?
-//   2) Rangos físicos       -> ¿los valores son eléctricamente posibles?
-//   3) Consistencia         -> ¿potencia ≈ voltaje x corriente x factor_potencia,
-//                              dentro de una tolerancia razonable?
-//   4) Comparación temporal -> ¿tiene sentido frente a la última lectura
-//                              válida de ese mismo circuito?
-//
-// Los pasos 1, 2 y 3 son OBLIGATORIOS: si alguno falla, la lectura se
-// rechaza y no se guarda en la base de datos. El paso 4 es solo
-// informativo (genera advertencias para el log) y nunca rechaza una
-// lectura por sí solo, porque una vivienda real puede pasar de poca
-// carga a mucha carga de un momento a otro (por ejemplo, al prender un
-// aire acondicionado) y eso es una lectura válida, no un error.
+// Valida las lecturas del PZEM-004T antes de guardarlas en PostgreSQL.
 
-// ---------------------------------------------------------------------
-// Campos que debe traer cada medidor dentro del arreglo "medidores" del
-// payload MQTT. Deben coincidir exactamente con las columnas de la
-// tabla "mediciones" en PostgreSQL (ver db-iot/schema.sql).
-// ---------------------------------------------------------------------
+// La validación se hace en 4 pasos:
+// 1) Estructura y tipos.
+// 2) Rangos físicos.
+// 3) Consistencia entre voltaje, corriente, potencia y factor de potencia.
+// 4) Comparación con la última lectura válida.
+
+// Los pasos 1, 2 y 3 rechazan lecturas inválidas.
+// El paso 4 solo genera una advertencia en el log.
+
+// Los campos deben coincidir con las columnas de "mediciones"
+// en PostgreSQL (ver db-iot/schema.sql).
 const CAMPOS_REQUERIDOS = [
   'voltaje',
   'corriente',
@@ -33,12 +20,8 @@ const CAMPOS_REQUERIDOS = [
   'factor_potencia',
 ];
 
-// ---------------------------------------------------------------------
-// Rangos físicos permitidos para un PZEM-004T en una instalación
-// residencial monofásica. Se dejan como constantes con nombre (y no
-// como números sueltos dentro de los "if") para que sean fáciles de
-// entender y de ajustar si el proyecto cambia de escenario.
-// ---------------------------------------------------------------------
+// Rangos permitidos para un PZEM-004T en una instalación residencial.
+// Se definen como constantes para facilitar su lectura y ajuste.
 const RANGO_VOLTAJE_MINIMO = 80; // voltios
 const RANGO_VOLTAJE_MAXIMO = 260; // voltios
 const RANGO_CORRIENTE_MINIMO = 0; // amperios
@@ -50,27 +33,18 @@ const RANGO_FRECUENCIA_MAXIMO = 65; // hercios
 const RANGO_FACTOR_POTENCIA_MINIMO = 0;
 const RANGO_FACTOR_POTENCIA_MAXIMO = 1;
 
-// ---------------------------------------------------------------------
-// Tolerancia para la validación de consistencia (potencia ≈ voltaje x
-// corriente x factor_potencia). Las mediciones reales nunca coinciden
-// exactamente por la precisión y resolución del sensor, así que se
-// compara contra un margen en vez de exigir una igualdad exacta.
-// ---------------------------------------------------------------------
+// Tolerancia para comprobar que potencia ≈ voltaje × corriente × factor de potencia.
+// Se usa un margen porque las lecturas reales del sensor no son exactas.
 const TOLERANCIA_MINIMA_VATIOS = 10; // piso de tolerancia para lecturas muy bajas (cerca de 0 W)
 const TOLERANCIA_PORCENTUAL_CONSISTENCIA = 0.2; // 20% sobre la potencia esperada
 
-// ---------------------------------------------------------------------
-// Umbrales para las advertencias comparativas frente a la lectura
-// anterior del mismo circuito. Nunca se usan para rechazar, solo para
-// avisar en el log.
-// ---------------------------------------------------------------------
+// Umbrales para comparar con la lectura anterior.
+// Solo generan advertencias en el log, no rechazan la lectura.
 const SALTO_VOLTAJE_ADVERTENCIA = 80; // voltios
 const SALTO_POTENCIA_ADVERTENCIA = 15000; // vatios
 
 /**
- * Capa 1: valida que la lectura tenga los 6 campos esperados y que cada
- * uno sea un número finito (rechaza strings, null, undefined, NaN,
- * Infinity).
+ * Capa 1: valida que estén los 6 campos y que todos sean números válidos.
  *
  * @param {object} lectura - Un elemento del arreglo "medidores".
  * @returns {{valido: boolean, tipo?: string, error?: string}}
@@ -94,8 +68,7 @@ function validarEstructuraYTipos(lectura) {
 }
 
 /**
- * Capa 2: valida que cada valor esté dentro de un rango físicamente
- * posible para una instalación residencial monofásica con PZEM-004T.
+ * Capa 2: valida que los valores estén dentro de rangos físicos posibles.
  *
  * @param {object} lectura - Un elemento del arreglo "medidores".
  * @returns {{valido: boolean, tipo?: string, error?: string}}
@@ -127,9 +100,8 @@ function validarRangosFisicos(lectura) {
 }
 
 /**
- * Capa 3: valida que la potencia reportada sea coherente con
- * potencia = voltaje x corriente x factor_potencia, dentro de un
- * margen de tolerancia (no se exige igualdad exacta).
+ * Capa 3: comprueba que la potencia sea coherente con
+ * voltaje × corriente × factor de potencia, usando una tolerancia.
  *
  * @param {object} lectura - Un elemento del arreglo "medidores".
  * @returns {{valido: boolean, tipo?: string, error?: string}}
@@ -154,11 +126,8 @@ function validarConsistenciaElectrica(lectura) {
 }
 
 /**
- * Capa 4 (complementaria, NO bloqueante): compara la lectura actual
- * contra la última lectura válida del MISMO circuito y devuelve un
- * arreglo de advertencias en texto. Nunca rechaza la lectura: solo
- * sirve para dejar aviso en el log de algo que convendría revisar
- * (por ejemplo, un reinicio del contador de energía del dispositivo).
+ * Capa 4: compara con la última lectura del mismo circuito.
+ * Solo genera advertencias en el log, nunca rechaza la lectura.
  *
  * @param {object} lecturaActual - La lectura que se está validando ahora.
  * @param {object|null} lecturaAnterior - Última lectura válida guardada
@@ -196,10 +165,7 @@ function generarAdvertenciasComparativas(lecturaActual, lecturaAnterior) {
 }
 
 /**
- * Punto de entrada del validador. Corre las 3 capas obligatorias en
- * orden (estructura/tipos -> rangos -> consistencia) y, solo si todas
- * pasan, agrega advertencias comparativas (no bloqueantes) contra la
- * lectura anterior del mismo circuito.
+ * Punto de entrada del validador.
  *
  * @param {object} lectura - Un elemento del arreglo "medidores" del
  *   payload MQTT (debe traer voltaje, corriente, potencia, energia,

@@ -1,1 +1,1 @@
-// Consultas PostgreSQL para analítica.
+module.exports = require("../mediciones/mediciones.repository");
