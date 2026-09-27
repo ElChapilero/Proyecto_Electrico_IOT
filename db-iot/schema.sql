@@ -10,6 +10,9 @@ CREATE TABLE usuarios (
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
+-- La unicidad del correo debe ser independiente de mayúsculas/minúsculas.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_usuarios_email_lower ON usuarios (LOWER(email));
+
 -- TABLA: PREDIOS
 
 CREATE TABLE predios (
@@ -162,6 +165,10 @@ CREATE TABLE mediciones (
 
 CREATE INDEX idx_mediciones_circuito ON mediciones(circuito_id);
 CREATE INDEX idx_mediciones_fecha ON mediciones(created_at);
+-- Las consultas históricas filtran por circuito y ordenan por fecha.
+-- Aplicar en una migración de producción; no se ejecuta automáticamente.
+CREATE INDEX IF NOT EXISTS idx_mediciones_circuito_fecha
+    ON mediciones(circuito_id, created_at DESC, id DESC);
 
 -- TABLA: CODIGOS_VINCULACION
 
