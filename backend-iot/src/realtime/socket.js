@@ -22,7 +22,7 @@ module.exports = function configurarSocket(io) {
     if (!token) return next(new Error('Falta token de autenticacion'));
 
     try {
-      socket.usuario = jwt.verify(token, jwtSecret); // { id, email }
+      socket.usuario = jwt.verify(token, jwtSecret, { algorithms: ['HS256'] }); // { id, email }
       next();
     } catch (err) {
       next(new Error('Token invalido o expirado'));

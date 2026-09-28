@@ -70,3 +70,11 @@ unicidad o estado.
 La ruta antigua `/api/dispositivos/registrar` conserva respuesta `200` para
 mantener la compatibilidad con el firmware existente. La versión
 `/api/v1/dispositivos/registrar` responde `201` al crear correctamente.
+
+## Mejoras futuras de autenticación
+
+- Verificación de correo electrónico.
+- Recuperación de contraseña.
+
+La verificación de correo será conveniente cuando el sistema se exponga
+públicamente o sea necesario comprobar que el usuario controla esa dirección.

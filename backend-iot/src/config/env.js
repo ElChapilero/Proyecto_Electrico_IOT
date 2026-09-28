@@ -12,9 +12,10 @@ function required(name, predicate = (value) => value.trim().length > 0) {
 // es preferible que falle fuerte y visible al iniciar, a que corra en
 // producción con un secreto público y predecible.
 const jwtSecret = process.env.JWT_SECRET;
-if (!jwtSecret || jwtSecret.trim().length < 16) {
+const insecureJwtSecret = !jwtSecret || jwtSecret.trim().length < 32 || /REEMPLAZAR|CAMBIAR_ESTO|^(secret|password|changeme)$/i.test(jwtSecret.trim());
+if (insecureJwtSecret) {
   throw new Error(
-    'Falta configurar JWT_SECRET en el archivo .env (o tiene menos de 16 caracteres). ' +
+    'Falta configurar JWT_SECRET en el archivo .env (debe ser un secreto aleatorio de al menos 32 caracteres). ' +
     'Generá uno con: node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'hex\'))" ' +
     'y pegalo en JWT_SECRET dentro de tu .env antes de levantar el backend.',
   );

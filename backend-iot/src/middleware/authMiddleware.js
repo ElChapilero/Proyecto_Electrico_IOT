@@ -11,7 +11,7 @@ function requiereAuth(req, res, next) {
   }
 
   try {
-    req.usuario = jwt.verify(token, jwtSecret); // { id, email }
+    req.usuario = jwt.verify(token, jwtSecret, { algorithms: ['HS256'] }); // { id, email }
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Token invalido o expirado' });

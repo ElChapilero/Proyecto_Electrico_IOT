@@ -5,7 +5,8 @@ const { jwtSecret } = require("../../config/env");
 
 function tokenFor(user) {
   return jwt.sign({ id: user.id, email: user.email }, jwtSecret, {
-    expiresIn: "7d",
+    algorithm: "HS256",
+    expiresIn: "24h",
   });
 }
 
@@ -38,7 +39,9 @@ async function register({ email, nombre, password }) {
 
 async function login({ email, password }) {
   const user = await repository.findByEmail(normalizarEmail(email));
-  if (!user || !(await bcrypt.compare(password, user.password_hash || ""))) {
+  const dummyPasswordHash = "$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
+  const passwordCorrecta = await bcrypt.compare(password, user?.password_hash || dummyPasswordHash);
+  if (!user || !passwordCorrecta) {
     throw Object.assign(new Error("Correo o contraseña incorrectos"), {
       status: 401,
       publicMessage: "Correo o contraseña incorrectos",
