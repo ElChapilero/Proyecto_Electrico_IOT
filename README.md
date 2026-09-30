@@ -5,10 +5,53 @@
 1. Copia `backend-iot/.env.example` como `backend-iot/.env`.
 2. Sustituye todos los valores `REEMPLAZAR`, `USUARIO`, `CONTRASENA` y `HOST`.
 3. Crea la base de datos ejecutando `db-iot/schema.sql`.
-4. Genera los certificados MQTT con `mqtt-broker-local/config/scripts/generate-certs.sh`.
-5. Crea `mqtt-broker-local/config/passwd` con `mosquitto_passwd` y configura `acl.conf` a partir de sus ejemplos.
-6. Instala dependencias en `backend-iot` y `frontend` con `npm install`.
-7. Con PostgreSQL y el backend activos, ejecuta `npm run test:api` dentro de `backend-iot` para probar el flujo principal sin frontend.
+4. Inicia Docker Desktop. Para Windows PowerShell, prepara el broker con:
+
+   ```powershell
+   .\mqtt-broker-local\setup-broker.ps1 -BrokerIp 127.0.0.1
+   ```
+
+   Si el ESP32 se conectará desde otra máquina, usa la IP LAN de este computador
+   en lugar de `127.0.0.1` (por ejemplo `-BrokerIp 192.168.20.26`). El script
+   crea los certificados TLS, `config/acl.conf`, `config/passwd` y los directorios
+   persistentes ignorados por Git.
+
+   En Linux/macOS también puedes usar `mqtt-broker-local/config/scripts/generate-certs.sh <IP_DEL_BROKER>`,
+   copiar `acl.conf.example` a `acl.conf` y crear `passwd` con `mosquitto_passwd`.
+5. Levanta el broker:
+
+   ```powershell
+   cd mqtt-broker-local
+   docker compose up -d
+   docker compose ps
+   docker compose logs -f mosquitto
+   ```
+
+   El compose ya existente es el broker local; no hace falta crear otro
+   contenedor de Mosquitto. Expone MQTT sin TLS en `1883`, MQTT con TLS en
+   `8883` y WebSockets en `9001`.
+
+6. Copia la contraseña del usuario `backend_listener` al `.env` y verifica que
+   `MQTT_CA_FILE` apunte a `../mqtt-broker-local/config/certs/ca.crt`. Para el
+   backend ejecutado en este mismo computador usa normalmente
+   `MQTT_HOST=localhost` y `MQTT_PORT=8883`. La IP LAN se usa en el firmware,
+   no necesariamente en el backend.
+7. Instala dependencias en `backend-iot` y `frontend` con `npm install`.
+8. Con PostgreSQL y el backend activos, ejecuta `npm run test:api` dentro de `backend-iot` para probar el flujo principal sin frontend.
+
+### Qué falta para ejecutar todo desde un computador nuevo
+
+- Docker Desktop iniciado y permiso para que el usuario acceda al daemon.
+- PostgreSQL local activo, con una base `dbproyecto-iot`; ejecuta `db-iot/schema.sql`
+  con el usuario indicado en `backend-iot/.env`. Este repositorio todavía no
+  incluye un compose para PostgreSQL.
+- `backend-iot/.env` completo, especialmente `DATABASE_URL`, `JWT_SECRET`, la
+  contraseña MQTT y la ruta del certificado CA.
+- Dependencias Node instaladas y puertos libres: `3000`, `5173`, `1883`, `8883`
+  y `9001`.
+- Para usar el ESP32: `firmware_config.h` generado desde su ejemplo, la IP LAN
+  del computador accesible desde el dispositivo, el puerto `8883`, `ca.crt` y
+  reglas de firewall para el puerto MQTT.
 
 Los archivos `.env`, contraseñas, claves privadas, logs y datos del broker están
 excluidos mediante `.gitignore`. Antes del primer `git push`, comprueba que no
@@ -66,6 +109,43 @@ Los UUID de ruta se validan antes de consultar PostgreSQL. `400` representa
 entrada inválida; `401` autenticación ausente o inválida; `403` falta de
 permiso; `404` recurso inexistente o no visible; y `409` conflictos de
 unicidad o estado.
+
+### Analítica por predio
+
+La analítica se agrupa bajo el predio, que es el recurso donde comienza la
+autorización. Todas estas rutas requieren JWT y comprueban la relación
+usuario → acceso al predio → panel → dispositivo → circuito:
+
+```text
+GET /api/v1/predios/:predioId/analitica/current
+GET /api/v1/predios/:predioId/analitica/daily
+GET /api/v1/predios/:predioId/analitica/weekly
+GET /api/v1/predios/:predioId/analitica/monthly
+GET /api/v1/predios/:predioId/analitica/history
+GET /api/v1/predios/:predioId/analitica/comparison
+GET /api/v1/predios/:predioId/analitica/statistics
+```
+
+Aceptan filtros combinables como `from`, `to`, `circuitId`, `deviceId`,
+`panelId`, `variables`, `granularity` y `limit`. Las respuestas usan
+`data`, `meta` y `filters`. `history` admite `granularity=raw|hour|day|week|month|auto`;
+`auto` usa datos horarios para rangos mayores de siete días.
+
+La tabla `mediciones_horarias` es derivada y conserva las mediciones originales
+como fuente de verdad. Aplica la migración [001_mediciones_horarias.sql](db-iot/migrations/001_mediciones_horarias.sql)
+con PostgreSQL antes de levantar el backend.
+
+El agregado marca `energia_reset_detectado=true` y deja `consumo_energia` en
+`NULL` cuando el contador retrocede. Esto evita presentar como consumo válido
+un reinicio del PZEM. La semántica definitiva de `energia` debe confirmarse
+con el payload real antes de interpretar todos los consumos como kWh.
+
+Para probar las rutas, registra/inicia sesión, toma el JWT y consulta, por
+ejemplo:
+
+```powershell
+curl.exe -H "Authorization: Bearer <JWT>" "http://localhost:3000/api/v1/predios/<PREDIO_ID>/analitica/history?from=2026-09-01T00:00:00Z&to=2026-09-28T23:59:59Z&granularity=hour"
+```
 
 La ruta antigua `/api/dispositivos/registrar` conserva respuesta `200` para
 mantener la compatibilidad con el firmware existente. La versión

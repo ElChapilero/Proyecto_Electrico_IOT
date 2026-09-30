@@ -31,6 +31,7 @@ const { publicRouter: dispositivosPublicRoutes, router: dispositivosRoutes } = r
 const circuitosRoutes = require("./modules/circuitos/circuitos.routes");
 const medicionesRoutes = require("./modules/mediciones/mediciones.routes");
 const analiticaRoutes = require("./modules/analitica/analitica.routes");
+const predioAnaliticaRoutes = require("./modules/analitica/predioAnalitica.routes");
 const alertasRoutes = require("./modules/alertas/alertas.routes");
 
 // API versionada.
@@ -46,6 +47,7 @@ app.use(
   circuitosRoutes,
   medicionesRoutes,
   analiticaRoutes,
+  predioAnaliticaRoutes,
   alertasRoutes,
 );
 
@@ -62,6 +64,7 @@ app.use(
   circuitosRoutes,
   medicionesRoutes,
   analiticaRoutes,
+  predioAnaliticaRoutes,
   alertasRoutes,
 );
 

@@ -3,10 +3,11 @@
 
 const { Pool } = require('pg');
 require('dotenv').config();
-const { databaseUrl } = require('./env');
+const { databaseUrl, statementTimeoutMs } = require('./env');
 
 const pool = new Pool({
   connectionString: databaseUrl,
+  statement_timeout: statementTimeoutMs,
   // Si  se prefiere variables sueltas en vez de connectionString, comentar
   // la linea de arriba y descomentar estas:
   // host: process.env.PGHOST,

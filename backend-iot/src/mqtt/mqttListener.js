@@ -28,6 +28,7 @@ require('dotenv').config();
 const pool = require('../config/db');
 const validarLecturaPzem = require('../modules/mediciones/pzemValidator');
 const alertasService = require('../modules/alertas/alertas.service');
+const { recalcularDespuesDeInsertar } = require('../modules/mediciones/medicionesHorarias.service');
 const { mqtt: mqttConfig } = require('../config/env');
 const { emitirMedicionGuardada, emitirEstadoDispositivo } = require('../realtime/realtime.service');
 const { obtenerInfoDispositivo } = require('./dispositivoCache');
@@ -205,6 +206,10 @@ function iniciarMqttListener(io) {
           [idCircuito, medidor.potencia, medidor.energia, medidor.voltaje, medidor.corriente, medidor.frecuencia, medidor.factor_potencia, recibidoEn]
         );
         const idMedicion = filaMedicion.rows[0].id;
+
+        // El agregado es derivado y nunca sustituye la medición original.
+        // Si falla, la telemetría sigue siendo válida y la hora puede reconstruirse.
+        await recalcularDespuesDeInsertar(idCircuito, recibidoEn);
 
         // Se actualiza la última lectura únicamente después de confirmar el INSERT.
         // Así la siguiente comparación siempre parte de un dato que sí quedó

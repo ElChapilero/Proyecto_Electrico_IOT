@@ -34,12 +34,16 @@ if (mqttTls && !fs.existsSync(mqttCaFile)) throw new Error(`MQTT_TLS=true pero n
 const mqttUser = required('MQTT_LISTENER_USER');
 const mqttPassword = required('MQTT_LISTENER_PASSWORD');
 const corsOrigins = (process.env.CORS_ORIGINS || '').split(',').map((origin) => origin.trim()).filter(Boolean);
+const statementTimeoutMs = Number(process.env.DB_STATEMENT_TIMEOUT_MS || 5000);
+if (!Number.isInteger(statementTimeoutMs) || statementTimeoutMs < 1000 || statementTimeoutMs > 120000)
+  throw new Error('DB_STATEMENT_TIMEOUT_MS debe ser un entero entre 1000 y 120000');
 
 module.exports = {
   port: Number(process.env.PORT || 3000),
   jwtSecret,
   databaseUrl,
   corsOrigins,
+  statementTimeoutMs,
   mqtt: {
     tls: mqttTls,
     host: mqttHost,
