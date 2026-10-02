@@ -24,9 +24,6 @@ async function recalcularHora(circuitoId, instante) {
          AVG(corriente) AS promedio_corriente,
          MIN(corriente) AS min_corriente,
          MAX(corriente) AS max_corriente,
-         AVG(frecuencia) AS promedio_frecuencia,
-         MIN(frecuencia) AS min_frecuencia,
-         MAX(frecuencia) AS max_frecuencia,
          AVG(factor_potencia) AS promedio_factor_potencia,
          MIN(factor_potencia) AS min_factor_potencia,
          MAX(factor_potencia) AS max_factor_potencia,
@@ -41,14 +38,14 @@ async function recalcularHora(circuitoId, instante) {
      INSERT INTO mediciones_horarias (
        circuito_id, fecha_hora, promedio_potencia, min_potencia, max_potencia,
        promedio_voltaje, min_voltaje, max_voltaje, promedio_corriente, min_corriente,
-       max_corriente, promedio_frecuencia, min_frecuencia, max_frecuencia,
+       max_corriente,
        promedio_factor_potencia, min_factor_potencia, max_factor_potencia,
        energia_inicial, energia_final, consumo_energia, energia_reset_detectado,
        cantidad_muestras, primera_lectura_at, ultima_lectura_at, calculado_en
      )
      SELECT $1, hora, promedio_potencia, min_potencia, max_potencia,
        promedio_voltaje, min_voltaje, max_voltaje, promedio_corriente, min_corriente,
-       max_corriente, promedio_frecuencia, min_frecuencia, max_frecuencia,
+       max_corriente,
        promedio_factor_potencia, min_factor_potencia, max_factor_potencia,
        energia_inicial, energia_final,
        CASE WHEN energia_inicial IS NOT NULL AND energia_final IS NOT NULL
@@ -67,9 +64,6 @@ async function recalcularHora(circuitoId, instante) {
        promedio_corriente = EXCLUDED.promedio_corriente,
        min_corriente = EXCLUDED.min_corriente,
        max_corriente = EXCLUDED.max_corriente,
-       promedio_frecuencia = EXCLUDED.promedio_frecuencia,
-       min_frecuencia = EXCLUDED.min_frecuencia,
-       max_frecuencia = EXCLUDED.max_frecuencia,
        promedio_factor_potencia = EXCLUDED.promedio_factor_potencia,
        min_factor_potencia = EXCLUDED.min_factor_potencia,
        max_factor_potencia = EXCLUDED.max_factor_potencia,

@@ -331,12 +331,11 @@ float randomFloat(float minimo, float maximo) {
 
 void generarMedicionSimulada(int circuito, float &voltaje, float &corriente,
                               float &potencia, float &energia,
-                              float &frecuencia, float &factorPotencia) {
+                              float &factorPotencia) {
   voltaje = randomFloat(118.0, 125.0);
   corriente = (circuito == 1) ? randomFloat(0.5, 5.0) : randomFloat(0.2, 3.5);
   factorPotencia = randomFloat(0.80, 0.99);
   potencia = voltaje * corriente * factorPotencia;
-  frecuencia = randomFloat(59.8, 60.2);
 
   const float horas = sendInterval / 3600000.0;
   energiaAcumulada[circuito] += (potencia * horas) / 1000.0;
@@ -352,8 +351,8 @@ String construirJsonMediciones() {
   JsonArray medidores = doc.createNestedArray("medidores");
 
   for (int i = 0; i < MAX_MEDIDORES; i++) {
-    float v, c, p, e, f, fp;
-    generarMedicionSimulada(i, v, c, p, e, f, fp);
+    float v, c, p, e, fp;
+    generarMedicionSimulada(i, v, c, p, e, fp);
 
     JsonObject m = medidores.createNestedObject();
     m["circuito"] = i + 1;
@@ -362,7 +361,6 @@ String construirJsonMediciones() {
     m["corriente"] = c;
     m["potencia"] = p;
     m["energia"] = e;
-    m["frecuencia"] = f;
     m["factor_potencia"] = fp;
   }
 

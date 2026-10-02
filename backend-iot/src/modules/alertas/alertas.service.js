@@ -12,7 +12,6 @@ const variables = [
   "energia",
   "voltaje",
   "corriente",
-  "frecuencia",
   "factor_potencia",
 ];
 const condiciones = ["MAYOR", "MENOR", "IGUAL", "FUERA_RANGO"];

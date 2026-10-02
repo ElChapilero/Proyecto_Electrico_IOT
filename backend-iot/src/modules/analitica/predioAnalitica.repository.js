@@ -25,7 +25,7 @@ async function current(filters) {
     `SELECT DISTINCT ON (m.circuito_id)
        m.id, m.circuito_id, c.indice AS circuito, d.id AS dispositivo_id,
        p.id AS panel_id, m.potencia, m.energia, m.voltaje, m.corriente,
-       m.frecuencia, m.factor_potencia, m.created_at
+       m.factor_potencia, m.created_at
      FROM mediciones m
      JOIN circuitos c ON c.id = m.circuito_id
      ${SCOPE_JOINS}
@@ -53,7 +53,7 @@ function rawAggregatePeriod(period) {
     SELECT circuito_id, circuito, dispositivo_id, panel_id, periodo,
       AVG(potencia) AS promedio_potencia, MIN(potencia) AS min_potencia,
       MAX(potencia) AS max_potencia, AVG(voltaje) AS promedio_voltaje,
-      AVG(corriente) AS promedio_corriente, AVG(frecuencia) AS promedio_frecuencia,
+      AVG(corriente) AS promedio_corriente,
       AVG(factor_potencia) AS promedio_factor_potencia, COUNT(*)::int AS cantidad_muestras,
       MIN(created_at) AS primera_lectura_at, MAX(created_at) AS ultima_lectura_at,
       (array_agg(energia ORDER BY created_at, id) FILTER (WHERE energia IS NOT NULL))[1] AS energia_inicial,
@@ -99,7 +99,6 @@ async function statistics(filters, from, to) {
     `SELECT COUNT(*)::int AS muestras, AVG(m.potencia) AS potencia_promedio,
        MIN(m.potencia) AS potencia_minima, MAX(m.potencia) AS potencia_maxima,
        AVG(m.voltaje) AS voltaje_promedio, AVG(m.corriente) AS corriente_promedio,
-       AVG(m.frecuencia) AS frecuencia_promedio,
        AVG(m.factor_potencia) AS factor_potencia_promedio,
        MIN(m.created_at) AS desde, MAX(m.created_at) AS hasta
      FROM mediciones m

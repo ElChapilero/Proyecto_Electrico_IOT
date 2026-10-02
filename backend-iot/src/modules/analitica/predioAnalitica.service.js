@@ -4,7 +4,7 @@ const { tieneAcceso } = require("../../utils/accesoHelpers");
 const error = (status, message) => Object.assign(new Error(message), { status, publicMessage: message });
 const VARIABLES = new Set([
   "energia", "consumo_energia", "potencia", "voltaje", "corriente",
-  "frecuencia", "factor_potencia", "cantidad_muestras",
+  "factor_potencia", "cantidad_muestras",
 ]);
 const GRANULARIDADES = new Set(["auto", "raw", "hour", "day", "week", "month"]);
 

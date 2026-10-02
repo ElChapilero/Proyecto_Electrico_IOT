@@ -16,7 +16,6 @@ const CAMPOS_REQUERIDOS = [
   'corriente',
   'potencia',
   'energia',
-  'frecuencia',
   'factor_potencia',
 ];
 
@@ -28,8 +27,6 @@ const RANGO_CORRIENTE_MINIMO = 0; // amperios
 const RANGO_CORRIENTE_MAXIMO = 100; // amperios (límite del PZEM-004T con shunt de 100A)
 const RANGO_POTENCIA_MINIMO = 0; // vatios
 const RANGO_POTENCIA_MAXIMO = 23000; // vatios (aprox. 100A x 230V)
-const RANGO_FRECUENCIA_MINIMO = 45; // hercios
-const RANGO_FRECUENCIA_MAXIMO = 65; // hercios
 const RANGO_FACTOR_POTENCIA_MINIMO = 0;
 const RANGO_FACTOR_POTENCIA_MAXIMO = 1;
 
@@ -44,7 +41,7 @@ const SALTO_VOLTAJE_ADVERTENCIA = 80; // voltios
 const SALTO_POTENCIA_ADVERTENCIA = 15000; // vatios
 
 /**
- * Capa 1: valida que estén los 6 campos y que todos sean números válidos.
+ * Capa 1: valida que estén los 5 campos y que todos sean números válidos.
  *
  * @param {object} lectura - Un elemento del arreglo "medidores".
  * @returns {{valido: boolean, tipo?: string, error?: string}}
@@ -85,9 +82,6 @@ function validarRangosFisicos(lectura) {
   }
   if (lectura.energia < 0) {
     return { valido: false, tipo: 'rango', error: 'La energía acumulada no puede ser negativa' };
-  }
-  if (lectura.frecuencia < RANGO_FRECUENCIA_MINIMO || lectura.frecuencia > RANGO_FRECUENCIA_MAXIMO) {
-    return { valido: false, tipo: 'rango', error: 'Frecuencia fuera de rango' };
   }
   if (
     lectura.factor_potencia < RANGO_FACTOR_POTENCIA_MINIMO ||
@@ -169,7 +163,7 @@ function generarAdvertenciasComparativas(lecturaActual, lecturaAnterior) {
  *
  * @param {object} lectura - Un elemento del arreglo "medidores" del
  *   payload MQTT (debe traer voltaje, corriente, potencia, energia,
- *   frecuencia y factor_potencia).
+ *   factor_potencia).
  * @param {object|null} [lecturaAnterior] - La última lectura válida
  *   guardada para ese mismo circuito, o null/omitido si es la primera.
  * @returns {{valido: boolean, tipo?: string, error?: string, advertencias?: string[]}}

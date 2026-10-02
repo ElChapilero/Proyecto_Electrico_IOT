@@ -201,9 +201,9 @@ function iniciarMqttListener(io) {
         });
 
         const filaMedicion = await pool.query(
-          `INSERT INTO mediciones (circuito_id, potencia, energia, voltaje, corriente, frecuencia, factor_potencia, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-          [idCircuito, medidor.potencia, medidor.energia, medidor.voltaje, medidor.corriente, medidor.frecuencia, medidor.factor_potencia, recibidoEn]
+          `INSERT INTO mediciones (circuito_id, potencia, energia, voltaje, corriente, factor_potencia, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+          [idCircuito, medidor.potencia, medidor.energia, medidor.voltaje, medidor.corriente, medidor.factor_potencia, recibidoEn]
         );
         const idMedicion = filaMedicion.rows[0].id;
 
@@ -234,7 +234,6 @@ function iniciarMqttListener(io) {
           corriente: medidor.corriente,
           potencia: medidor.potencia,
           energia: medidor.energia,
-          frecuencia: medidor.frecuencia,
           factor_potencia: medidor.factor_potencia,
         });
       } catch (error) {
@@ -243,7 +242,7 @@ function iniciarMqttListener(io) {
         // ahora): cada medidor se guarda con su propio INSERT
         // independiente, para que si uno falla los demás circuitos de
         // este mismo paquete se sigan guardando igual. Cuando haya
-        // muchos circuitos o mucha frecuencia de mensajes, esto puede
+        // muchos circuitos o un alto volumen de mensajes, esto puede
         // pasarse a un insert por lote (bulk insert) dentro de una
         // transacción; por ahora, con pocos circuitos, no es
         // necesario y se prioriza la resiliencia por sobre la

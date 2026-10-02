@@ -153,7 +153,6 @@ CREATE TABLE mediciones (
     energia NUMERIC,
     voltaje NUMERIC,
     corriente NUMERIC,
-    frecuencia NUMERIC,
     factor_potencia NUMERIC,
     created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
 
@@ -185,9 +184,6 @@ CREATE TABLE IF NOT EXISTS mediciones_horarias (
     promedio_corriente NUMERIC,
     min_corriente NUMERIC,
     max_corriente NUMERIC,
-    promedio_frecuencia NUMERIC,
-    min_frecuencia NUMERIC,
-    max_frecuencia NUMERIC,
     promedio_factor_potencia NUMERIC,
     min_factor_potencia NUMERIC,
     max_factor_potencia NUMERIC,
@@ -260,7 +256,7 @@ CREATE TABLE configuracion_alertas (
         CHECK (
             tipo_variable IN (
                 'potencia', 'energia', 'voltaje',
-                'corriente', 'frecuencia', 'factor_potencia'
+                'corriente', 'factor_potencia'
             )
         ),
 
@@ -328,7 +324,7 @@ CREATE TABLE alertas (
         CHECK (
             tipo_variable IN (
                 'potencia', 'energia', 'voltaje',
-                'corriente', 'frecuencia', 'factor_potencia'
+                'corriente', 'factor_potencia'
             )
         )
 );
