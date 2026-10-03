@@ -5,9 +5,9 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     proxy: {
-      // Todo lo que empiece con /api se reenvia al backend Express,
+      // Solo la API versionada se reenvia al backend Express,
       // asi durante el desarrollo no hace falta configurar CORS.
-      '/api': 'http://localhost:3000',
+      '/api/v1': 'http://localhost:3000',
     },
   },
 });
