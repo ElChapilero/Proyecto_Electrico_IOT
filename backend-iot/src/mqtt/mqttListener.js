@@ -64,6 +64,23 @@ const mensajesRecientes = new Map(); // "uuidEsp32:timestamp_ms" -> cuándo lo v
 const ultimoTimestampPorDispositivo = new Map();
 const colasPorDispositivo = new Map();
 const VENTANA_DEDUPLICACION_MS = 30000; // 30 segundos
+const EPOCH_MINIMO_DISPOSITIVO_MS = Date.UTC(2024, 0, 1);
+const DESFASE_FUTURO_MAXIMO_MS = 10 * 60 * 1000;
+
+function obtenerFechaAdquisicion(timestampMs) {
+  if (timestampMs === undefined || timestampMs === null || timestampMs === '') {
+    return null;
+  }
+  const numero = typeof timestampMs === 'number' ? timestampMs : Number(timestampMs);
+  if (!Number.isSafeInteger(numero) || numero < EPOCH_MINIMO_DISPOSITIVO_MS) {
+    return null;
+  }
+  if (numero > Date.now() + DESFASE_FUTURO_MAXIMO_MS) {
+    return null;
+  }
+  const fecha = new Date(numero);
+  return Number.isNaN(fecha.getTime()) ? null : fecha;
+}
 
 function limpiarMensajesAntiguos() {
   const ahora = Date.now();
@@ -156,6 +173,12 @@ function iniciarMqttListener(io) {
         return;
       }
 
+    const fechaAdquisicion = obtenerFechaAdquisicion(datos.timestamp_ms);
+    if (!fechaAdquisicion) {
+      console.warn(`⚠️ Payload MQTT descartado [${uuidEsp32}]: timestamp_ms inválido o ausente`);
+      return;
+    }
+
     // Si este mismo paquete ya fue procesado recientemente, se descarta.
     // Esto puede ocurrir con QoS 1 cuando el broker vuelve a entregar
     // exactamente el mismo mensaje.
@@ -166,8 +189,8 @@ function iniciarMqttListener(io) {
     }
 
     const listaMedidores = datos.medidores;
-    // Todas las lecturas de este JSON pertenecen al mismo paquete, por lo que
-    // se usa una sola marca de tiempo del backend para guardarlas.
+    // Todas las lecturas de este JSON pertenecen al mismo paquete y utilizan
+    // el instante absoluto capturado por el ESP32 al tomar la muestra.
     const recibidoEn = new Date();
 
     // Acá se guardan solo las lecturas que pasaron la validación y además
@@ -203,13 +226,14 @@ function iniciarMqttListener(io) {
         const filaMedicion = await pool.query(
           `INSERT INTO mediciones (circuito_id, potencia, energia, voltaje, corriente, factor_potencia, created_at)
            VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-          [idCircuito, medidor.potencia, medidor.energia, medidor.voltaje, medidor.corriente, medidor.factor_potencia, recibidoEn]
+          [idCircuito, medidor.potencia, medidor.energia, medidor.voltaje, medidor.corriente, medidor.factor_potencia, fechaAdquisicion]
         );
         const idMedicion = filaMedicion.rows[0].id;
 
         // El agregado es derivado y nunca sustituye la medición original.
         // Si falla, la telemetría sigue siendo válida y la hora puede reconstruirse.
-        await recalcularDespuesDeInsertar(idCircuito, recibidoEn);
+        await recalcularDespuesDeInsertar(idCircuito, fechaAdquisicion);
+
 
         // Se actualiza la última lectura únicamente después de confirmar el INSERT.
         // Así la siguiente comparación siempre parte de un dato que sí quedó
@@ -235,6 +259,7 @@ function iniciarMqttListener(io) {
           potencia: medidor.potencia,
           energia: medidor.energia,
           factor_potencia: medidor.factor_potencia,
+          created_at: fechaAdquisicion.toISOString(),
         });
       } catch (error) {
         console.error(`❌ Error guardando medicion (circuito ${medidor.circuito}) de ${uuidEsp32}:`, error.message);
@@ -270,7 +295,8 @@ function iniciarMqttListener(io) {
         topic,
         uuid_esp32: uuidEsp32,
         medidores: medicionesGuardadas,
-        timestamp: new Date().toISOString(),
+        timestamp: fechaAdquisicion.toISOString(),
+        timestamp_recepcion: recibidoEn.toISOString(),
         timestamp_dispositivo_ms: datos.timestamp_ms ?? null,
       });
     }

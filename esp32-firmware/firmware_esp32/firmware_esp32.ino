@@ -9,6 +9,8 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+#include <time.h>
+#include <sys/time.h>
 
 // MODO SIMULACION (igual que antes: no requiere PZEM todavia)
 #define MODO_SIMULACION true
@@ -90,6 +92,53 @@ unsigned long inicioIntentoWifi = 0;
 const unsigned long TIMEOUT_WIFI_MS = 20000;
 
 bool registroCompletado = false;
+
+// HORA ABSOLUTA DEL DISPOSITIVO
+// COT5 corresponde a Colombia (UTC-05:00, sin horario de verano).
+const char* ZONA_HORARIA = "COT5";
+const char* SERVIDOR_NTP_1 = "pool.ntp.org";
+const char* SERVIDOR_NTP_2 = "time.nist.gov";
+const char* SERVIDOR_NTP_3 = "time.google.com";
+const time_t EPOCH_MINIMO_VALIDO = 1704067200; // 2024-01-01 UTC
+const unsigned long INTERVALO_LOG_HORA_MS = 30000;
+unsigned long ultimoLogHoraNoSincronizada = 0;
+bool relojSincronizado = false;
+bool wifiEstabaConectado = false;
+unsigned long ultimoIntentoReconectarWifi = 0;
+
+void iniciarSincronizacionHora() {
+  configTzTime(ZONA_HORARIA, SERVIDOR_NTP_1, SERVIDOR_NTP_2, SERVIDOR_NTP_3);
+  relojSincronizado = false;
+  Serial.println("Sincronizando hora NTP...");
+}
+
+bool horaSincronizada() {
+  struct timeval ahora;
+  gettimeofday(&ahora, nullptr);
+  const bool valida = ahora.tv_sec >= EPOCH_MINIMO_VALIDO;
+  if (valida && !relojSincronizado) {
+    relojSincronizado = true;
+    struct tm utcInfo;
+    struct tm localInfo;
+    gmtime_r(&ahora.tv_sec, &utcInfo);
+    localtime_r(&ahora.tv_sec, &localInfo);
+    char utcTexto[32];
+    char localTexto[32];
+    strftime(utcTexto, sizeof(utcTexto), "%Y-%m-%dT%H:%M:%S", &utcInfo);
+    strftime(localTexto, sizeof(localTexto), "%Y-%m-%d %H:%M:%S", &localInfo);
+    Serial.println("Hora sincronizada correctamente");
+    Serial.println("UTC: " + String(utcTexto));
+    Serial.println("Hora local: " + String(localTexto));
+  }
+  return valida;
+}
+
+uint64_t obtenerTimestampActualMs() {
+  struct timeval ahora;
+  gettimeofday(&ahora, nullptr);
+  return (static_cast<uint64_t>(ahora.tv_sec) * 1000ULL) +
+         (static_cast<uint64_t>(ahora.tv_usec) / 1000ULL);
+}
 
 // BLUETOOTH (BLE) - RECEPCION DE CREDENCIALES WIFI
 #define SERVICE_UUID    "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
@@ -344,8 +393,9 @@ void generarMedicionSimulada(int circuito, float &voltaje, float &corriente,
 
 String construirJsonMediciones() {
   DynamicJsonDocument doc(2048);
+  const uint64_t timestampMedicion = obtenerTimestampActualMs();
   doc["device_id"] = cfgDeviceUuid;
-  doc["timestamp_ms"] = millis();
+  doc["timestamp_ms"] = timestampMedicion;
   doc["modo"] = "simulacion";
 
   JsonArray medidores = doc.createNestedArray("medidores");
@@ -356,7 +406,7 @@ String construirJsonMediciones() {
 
     JsonObject m = medidores.createNestedObject();
     m["circuito"] = i + 1;
-    m["timestamp_ms"] = millis();
+    m["timestamp_ms"] = timestampMedicion;
     m["voltaje"] = v;
     m["corriente"] = c;
     m["potencia"] = p;
@@ -418,6 +468,7 @@ void loop() {
     case CONECTANDO_WIFI:
       if (WiFi.status() == WL_CONNECTED) {
         Serial.println("WiFi conectado, IP: " + WiFi.localIP().toString());
+        iniciarSincronizacionHora();
 
         if (cfgProvisionado) {
           estadoActual = OPERACION_NORMAL;
@@ -441,10 +492,34 @@ void loop() {
       break;
 
     case OPERACION_NORMAL:
+      if (WiFi.status() != WL_CONNECTED) {
+        wifiEstabaConectado = false;
+        relojSincronizado = false;
+        if (millis() - ultimoIntentoReconectarWifi >= 5000) {
+          ultimoIntentoReconectarWifi = millis();
+          Serial.println("WiFi desconectado, intentando reconectar...");
+          WiFi.reconnect();
+        }
+        break;
+      }
+
+      if (!wifiEstabaConectado) {
+        wifiEstabaConectado = true;
+        iniciarSincronizacionHora();
+      }
+
       client.loop();
       if (!client.connected()) reconectarMQTT();
 
       enviarPendiente();
+
+      if (!horaSincronizada()) {
+        if (millis() - ultimoLogHoraNoSincronizada >= INTERVALO_LOG_HORA_MS) {
+          ultimoLogHoraNoSincronizada = millis();
+          Serial.println("Hora NTP todavía no está sincronizada; se espera antes de crear mediciones");
+        }
+        break;
+      }
 
       if (millis() - lastSend >= sendInterval) {
         lastSend = millis();
