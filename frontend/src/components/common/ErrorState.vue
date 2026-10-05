@@ -1,1 +1,27 @@
-<template><div class="alert alert-error" role="alert"><strong>{{ title }}</strong><span v-if="message"> {{ message }}</span><button v-if="retry" class="retry" @click="$emit('retry')">Reintentar</button></div></template><script setup>defineProps({title:{type:String,default:'No se pudo cargar la información'},message:String,retry:Boolean});defineEmits(['retry']);</script><style scoped>.retry{margin-left:12px;border:0;background:transparent;color:inherit;text-decoration:underline;font-weight:600}</style>
+<template>
+  <div class="alert alert-error" role="alert">
+    <strong>{{ title }}</strong
+    ><span v-if="message"> {{ message }}</span
+    ><button v-if="retry" class="retry" @click="$emit('retry')">
+      Reintentar
+    </button>
+  </div>
+</template>
+<script setup>
+defineProps({
+  title: { type: String, default: "No se pudo cargar la información" },
+  message: String,
+  retry: Boolean,
+});
+defineEmits(["retry"]);
+</script>
+<style scoped>
+.retry {
+  margin-left: 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-decoration: underline;
+  font-weight: 600;
+}
+</style>

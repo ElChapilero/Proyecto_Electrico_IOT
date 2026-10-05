@@ -1,2 +1,23 @@
-<template><BaseModal :title="title" @close="$emit('cancel')"><p>{{ message }}</p><div class="actions"><BaseButton variant="ghost" @click="$emit('cancel')">Cancelar</BaseButton><BaseButton @click="$emit('confirm')">Confirmar</BaseButton></div></BaseModal></template>
-<script setup>import BaseModal from './BaseModal.vue';import BaseButton from './BaseButton.vue';defineProps({title:String,message:String});defineEmits(['cancel','confirm']);</script><style scoped>.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}</style>
+<template>
+  <BaseModal :title="title" @close="$emit('cancel')"
+    ><p>{{ message }}</p>
+    <div class="actions">
+      <BaseButton variant="ghost" @click="$emit('cancel')">Cancelar</BaseButton
+      ><BaseButton @click="$emit('confirm')">Confirmar</BaseButton>
+    </div></BaseModal
+  >
+</template>
+<script setup>
+import BaseModal from "./BaseModal.vue";
+import BaseButton from "./BaseButton.vue";
+defineProps({ title: String, message: String });
+defineEmits(["cancel", "confirm"]);
+</script>
+<style scoped>
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+</style>

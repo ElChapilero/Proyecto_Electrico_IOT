@@ -1,2 +1,2 @@
-import { useRealtimeStore } from '../stores/realtimeStore';
+import { useRealtimeStore } from "../stores/realtimeStore";
 export const useRealtime = useRealtimeStore;

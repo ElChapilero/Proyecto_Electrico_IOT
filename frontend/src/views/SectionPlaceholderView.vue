@@ -1,4 +1,76 @@
-<template><section class="placeholder"><div class="placeholder-icon">{{ icon }}</div><span class="eyebrow">Base preparada</span><h2>{{ title }}</h2><p>{{ description }}</p><div class="page-card note"><strong>Esta ventana se construirá sobre los contratos reales del backend.</strong><span>No se muestran datos simulados ni se realizan consultas fuera del alcance validado.</span></div></section></template>
-<script setup>defineProps({title:{type:String,required:true},description:{type:String,required:true},icon:{type:String,default:'◌'}});</script>
-<style scoped>.placeholder{min-height:450px;display:grid;place-items:center;align-content:center;text-align:center;gap:12px}.placeholder-icon{width:66px;height:66px;display:grid;place-items:center;border:1px solid rgba(113,173,255,.25);border-radius:50%;background:var(--color-primary-soft);color:var(--color-primary);font-size:28px;box-shadow:0 0 30px rgba(113,173,255,.1)}.eyebrow{color:var(--color-primary);font-size:11px;text-transform:uppercase;letter-spacing:.12em;font-weight:700}.placeholder h2{color:#b9d7ff;font-size:30px}.placeholder>p{max-width:520px;color:var(--color-muted);line-height:1.6;font-size:14px}.note{display:grid;gap:6px;padding:16px 20px;margin-top:12px;max-width:580px;color:var(--color-muted);font-size:12px}.note strong{color:#c8ddfb;font-size:13px}
+<template>
+  <section class="placeholder">
+    <div class="placeholder-icon">{{ icon }}</div>
+    <span class="eyebrow">Base preparada</span>
+    <h2>{{ title }}</h2>
+    <p>{{ description }}</p>
+    <div class="page-card note">
+      <strong
+        >Esta ventana se construirá sobre los contratos reales del
+        backend.</strong
+      ><span
+        >No se muestran datos simulados ni se realizan consultas fuera del
+        alcance validado.</span
+      >
+    </div>
+  </section>
+</template>
+<script setup>
+defineProps({
+  title: { type: String, required: true },
+  description: { type: String, required: true },
+  icon: { type: String, default: "◌" },
+});
+</script>
+<style scoped>
+.placeholder {
+  min-height: 450px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  text-align: center;
+  gap: 12px;
+}
+.placeholder-icon {
+  width: 66px;
+  height: 66px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(113, 173, 255, 0.25);
+  border-radius: 50%;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 28px;
+  box-shadow: 0 0 30px rgba(113, 173, 255, 0.1);
+}
+.eyebrow {
+  color: var(--color-primary);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+}
+.placeholder h2 {
+  color: #b9d7ff;
+  font-size: 30px;
+}
+.placeholder > p {
+  max-width: 520px;
+  color: var(--color-muted);
+  line-height: 1.6;
+  font-size: 14px;
+}
+.note {
+  display: grid;
+  gap: 6px;
+  padding: 16px 20px;
+  margin-top: 12px;
+  max-width: 580px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.note strong {
+  color: #c8ddfb;
+  font-size: 13px;
+}
 </style>

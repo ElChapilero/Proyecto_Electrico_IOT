@@ -1,4 +1,126 @@
-<template><main class="auth-page"><section class="auth-card page-card"><div class="brand">Vatio<span>·</span></div><p class="kicker">Primer acceso</p><h1>Crea tu cuenta</h1><p class="intro">Tu contraseña debe tener 10 caracteres, mayúscula, minúscula, número y símbolo.</p><form @submit.prevent="submit"><BaseInput v-model="nombre" label="Nombre" autocomplete="name" required/><BaseInput v-model="email" label="Correo" type="email" autocomplete="email" required/><BaseInput v-model="password" label="Contraseña" type="password" autocomplete="new-password" required/><ErrorState v-if="error" :message="error"/><BaseButton type="submit" :disabled="auth.state.cargando">{{ auth.state.cargando ? 'Creando…' : 'Crear cuenta' }}</BaseButton></form><p class="switch">¿Ya tienes cuenta? <router-link to="/login">Iniciar sesión</router-link></p></section></main></template>
-<script setup>import { ref } from 'vue';import { useRouter } from 'vue-router';import BaseInput from '../components/common/BaseInput.vue';import BaseButton from '../components/common/BaseButton.vue';import ErrorState from '../components/common/ErrorState.vue';import { useAuthStore } from '../stores/authStore';import { usePredioStore } from '../stores/predioStore';const nombre=ref('');const email=ref('');const password=ref('');const error=ref('');const auth=useAuthStore();const predio=usePredioStore();const router=useRouter();async function submit(){error.value='';try{const result=await auth.authenticate({nombre:nombre.value,email:email.value,password:password.value},'register');await predio.load({force:true});if(result.predio?.id&&!predio.predioId.value)await predio.select(result.predio.id);router.replace('/dashboard')}catch(e){error.value=e.message}}</script>
-<style scoped>.auth-page{min-height:100dvh;display:grid;place-items:center;padding:20px;background:radial-gradient(circle at 90% 10%,#d9f0eb,transparent 38%),var(--color-paper)}.auth-card{width:min(100%,430px);padding:36px}.brand{font:700 25px var(--font-display);color:var(--color-primary-dark)}.brand span{color:var(--color-primary)}.kicker{margin-top:26px;color:var(--color-primary);font-size:12px;text-transform:uppercase;letter-spacing:.12em;font-weight:700}.auth-card h1{margin-top:8px;font-size:30px}.intro{margin-top:10px;color:var(--color-muted);line-height:1.5}form{display:grid;gap:16px;margin-top:26px}.switch{text-align:center;margin-top:20px;color:var(--color-muted);font-size:14px}@media(max-width:500px){.auth-card{padding:28px 20px}}
+<template>
+  <main class="auth-page">
+    <section class="auth-card page-card">
+      <div class="brand">Vatio<span>·</span></div>
+      <p class="kicker">Primer acceso</p>
+      <h1>Crea tu cuenta</h1>
+      <p class="intro">
+        Tu contraseña debe tener 10 caracteres, mayúscula, minúscula, número y
+        símbolo.
+      </p>
+      <form @submit.prevent="submit">
+        <BaseInput
+          v-model="nombre"
+          label="Nombre"
+          autocomplete="name"
+          required
+        /><BaseInput
+          v-model="email"
+          label="Correo"
+          type="email"
+          autocomplete="email"
+          required
+        /><BaseInput
+          v-model="password"
+          label="Contraseña"
+          type="password"
+          autocomplete="new-password"
+          required
+        /><ErrorState v-if="error" :message="error" /><BaseButton
+          type="submit"
+          :disabled="auth.state.cargando"
+          >{{ auth.state.cargando ? "Creando…" : "Crear cuenta" }}</BaseButton
+        >
+      </form>
+      <p class="switch">
+        ¿Ya tienes cuenta? <router-link to="/login">Iniciar sesión</router-link>
+      </p>
+    </section>
+  </main>
+</template>
+<script setup>
+import { ref } from "vue";
+import { useRouter } from "vue-router";
+import BaseInput from "../components/common/BaseInput.vue";
+import BaseButton from "../components/common/BaseButton.vue";
+import ErrorState from "../components/common/ErrorState.vue";
+import { useAuthStore } from "../stores/authStore";
+import { usePredioStore } from "../stores/predioStore";
+const nombre = ref("");
+const email = ref("");
+const password = ref("");
+const error = ref("");
+const auth = useAuthStore();
+const predio = usePredioStore();
+const router = useRouter();
+async function submit() {
+  error.value = "";
+  try {
+    const result = await auth.authenticate(
+      { nombre: nombre.value, email: email.value, password: password.value },
+      "register",
+    );
+    await predio.load({ force: true });
+    if (result.predio?.id && !predio.predioId.value)
+      await predio.select(result.predio.id);
+    router.replace("/dashboard");
+  } catch (e) {
+    error.value = e.message;
+  }
+}
+</script>
+<style scoped>
+.auth-page {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background:
+    radial-gradient(circle at 90% 10%, #d9f0eb, transparent 38%),
+    var(--color-paper);
+}
+.auth-card {
+  width: min(100%, 430px);
+  padding: 36px;
+}
+.brand {
+  font: 700 25px var(--font-display);
+  color: var(--color-primary-dark);
+}
+.brand span {
+  color: var(--color-primary);
+}
+.kicker {
+  margin-top: 26px;
+  color: var(--color-primary);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+}
+.auth-card h1 {
+  margin-top: 8px;
+  font-size: 30px;
+}
+.intro {
+  margin-top: 10px;
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+form {
+  display: grid;
+  gap: 16px;
+  margin-top: 26px;
+}
+.switch {
+  text-align: center;
+  margin-top: 20px;
+  color: var(--color-muted);
+  font-size: 14px;
+}
+@media (max-width: 500px) {
+  .auth-card {
+    padding: 28px 20px;
+  }
+}
 </style>

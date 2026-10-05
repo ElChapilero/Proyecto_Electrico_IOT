@@ -1,3 +1,62 @@
-<template><div class="metrics"><article v-for="metric in metrics" :key="metric.key" class="metric page-card"><span>{{ metric.label }}</span><strong>{{ formatMetric(record.latest?.[metric.key],metric.decimals) }}</strong><small>{{ metric.unit }}</small></article></div></template>
-<script setup>import { formatMetric } from '../../composables/useRealtimeData';defineProps({record:{type:Object,required:true},metrics:{type:Array,required:true}});</script>
-<style scoped>.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:11px}.metric{display:grid;gap:7px;text-align:center;padding:17px 10px}.metric span{color:#e8f1fb;font-size:13px;font-weight:600}.metric strong{font:700 22px var(--font-display);color:#fff;overflow-wrap:anywhere}.metric small{color:#d6e2f0;font-size:12px}@media(max-width:900px){.metrics{grid-template-columns:repeat(3,1fr)}}@media(max-width:560px){.metrics{grid-template-columns:repeat(2,1fr)}.metric:last-child{grid-column:1/-1}}</style>
+<template>
+  <div class="metrics">
+    <article
+      v-for="metric in metrics"
+      :key="metric.key"
+      class="metric page-card"
+    >
+      <span>{{ metric.label }}</span
+      ><strong>{{
+        formatMetric(record.latest?.[metric.key], metric.decimals)
+      }}</strong
+      ><small>{{ metric.unit }}</small>
+    </article>
+  </div>
+</template>
+<script setup>
+import { formatMetric } from "../../composables/useRealtimeData";
+defineProps({
+  record: { type: Object, required: true },
+  metrics: { type: Array, required: true },
+});
+</script>
+<style scoped>
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 11px;
+}
+.metric {
+  display: grid;
+  gap: 7px;
+  text-align: center;
+  padding: 17px 10px;
+}
+.metric span {
+  color: #e8f1fb;
+  font-size: 13px;
+  font-weight: 600;
+}
+.metric strong {
+  font: 700 22px var(--font-display);
+  color: #fff;
+  overflow-wrap: anywhere;
+}
+.metric small {
+  color: #d6e2f0;
+  font-size: 12px;
+}
+@media (max-width: 900px) {
+  .metrics {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (max-width: 560px) {
+  .metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .metric:last-child {
+    grid-column: 1/-1;
+  }
+}
+</style>

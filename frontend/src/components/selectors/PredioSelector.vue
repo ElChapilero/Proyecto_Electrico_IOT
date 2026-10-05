@@ -1,3 +1,38 @@
-<template><div class="property"><BaseSelect :model-value="predioId" :disabled="cargando || !predios.length" @update:model-value="select"><option v-if="cargando" value="">Cargando predios…</option><option v-else-if="!predios.length" value="">Sin predios disponibles</option><option v-for="item in predios" :key="item.id" :value="item.id">{{ item.nombre }}</option></BaseSelect><span class="u-sr-only">Predio de trabajo</span></div></template>
-<script setup>import { computed } from 'vue';import BaseSelect from '../common/BaseSelect.vue';import { usePredioStore } from '../../stores/predioStore';const store=usePredioStore();const {predios,predioId}=store;const cargando=computed(()=>store.state.cargando);function select(id){store.select(id)}</script>
-<style scoped>.property{min-width:190px}.property :deep(.field){display:block}.property :deep(select){font-weight:600}</style>
+<template>
+  <div class="property">
+    <BaseSelect
+      :model-value="predioId"
+      :disabled="cargando || !predios.length"
+      @update:model-value="select"
+      ><option v-if="cargando" value="">Cargando predios…</option>
+      <option v-else-if="!predios.length" value="">
+        Sin predios disponibles
+      </option>
+      <option v-for="item in predios" :key="item.id" :value="item.id">
+        {{ item.nombre }}
+      </option></BaseSelect
+    ><span class="u-sr-only">Predio de trabajo</span>
+  </div>
+</template>
+<script setup>
+import { computed } from "vue";
+import BaseSelect from "../common/BaseSelect.vue";
+import { usePredioStore } from "../../stores/predioStore";
+const store = usePredioStore();
+const { predios, predioId } = store;
+const cargando = computed(() => store.state.cargando);
+function select(id) {
+  store.select(id);
+}
+</script>
+<style scoped>
+.property {
+  min-width: 190px;
+}
+.property :deep(.field) {
+  display: block;
+}
+.property :deep(select) {
+  font-weight: 600;
+}
+</style>
