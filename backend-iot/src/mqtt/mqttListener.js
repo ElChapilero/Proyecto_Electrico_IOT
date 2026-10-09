@@ -82,6 +82,26 @@ function obtenerFechaAdquisicion(timestampMs) {
   return Number.isNaN(fecha.getTime()) ? null : fecha;
 }
 
+function obtenerFechaMedicion(medidor, fechaPaquete) {
+  return obtenerFechaAdquisicion(medidor?.timestamp_ms) || fechaPaquete;
+}
+
+function imprimirResumenPaquete(uuidEsp32, resumen) {
+  console.log(`📥 [${uuidEsp32}] paquete procesado:\n${JSON.stringify(resumen, null, 2)}`);
+}
+
+function imprimirPaqueteInvalido(uuidEsp32, motivo, datos = null) {
+  imprimirResumenPaquete(uuidEsp32, {
+    estado: 'Invalido',
+    motivo,
+    encolado: datos?.encolado === true || datos?.origen?.encolado === true,
+    timestamp_paquete: obtenerFechaAdquisicion(datos?.timestamp_ms)?.toISOString() || null,
+    circuitos: Array.isArray(datos?.medidores)
+      ? datos.medidores.map((medidor) => medidor.circuito)
+      : [],
+  });
+}
+
 function limpiarMensajesAntiguos() {
   const ahora = Date.now();
   for (const [claveMensaje, marcaDeTiempo] of mensajesRecientes) {
@@ -166,16 +186,19 @@ function iniciarMqttListener(io) {
       datos = JSON.parse(payload.toString());
       } catch (error) {
         console.error('⚠️ No se pudo parsear el mensaje MQTT:', error.message);
+        imprimirPaqueteInvalido(uuidEsp32, 'JSON no válido');
         return;
       }
       if (!datos || typeof datos !== 'object' || !Array.isArray(datos.medidores)) {
         console.warn(`⚠️ Payload MQTT inválido [${uuidEsp32}]: medidores debe ser una lista`);
+        imprimirPaqueteInvalido(uuidEsp32, 'medidores ausente o no es una lista', datos);
         return;
       }
 
     const fechaAdquisicion = obtenerFechaAdquisicion(datos.timestamp_ms);
     if (!fechaAdquisicion) {
       console.warn(`⚠️ Payload MQTT descartado [${uuidEsp32}]: timestamp_ms inválido o ausente`);
+      imprimirPaqueteInvalido(uuidEsp32, 'timestamp_paquete inválido o ausente', datos);
       return;
     }
 
@@ -184,20 +207,29 @@ function iniciarMqttListener(io) {
     // exactamente el mismo mensaje.
     const timestampDispositivo = Number(datos.timestamp_ms);
     if (Number.isSafeInteger(timestampDispositivo) && esMensajeDuplicado(uuidEsp32, timestampDispositivo)) {
-      console.warn(`♻️ Mensaje duplicado descartado (QoS 1) [${uuidEsp32}] timestamp_ms=${datos.timestamp_ms}`);
+      imprimirResumenPaquete(uuidEsp32, {
+        estado: 'Repetido',
+        timestamp_paquete: fechaAdquisicion.toISOString(),
+        encolado: datos.encolado === true || datos.origen?.encolado === true,
+        circuitos: datos.medidores.map((medidor) => medidor.circuito),
+      });
       return;
     }
 
     const listaMedidores = datos.medidores;
-    // Todas las lecturas de este JSON pertenecen al mismo paquete y utilizan
-    // el instante absoluto capturado por el ESP32 al tomar la muestra.
+    // timestamp_ms del paquete identifica el envío y sirve como respaldo.
+    // Cada circuito puede traer su propio timestamp_ms de captura.
     const recibidoEn = new Date();
+    const paqueteEncolado = datos.encolado === true || datos.origen?.encolado === true;
 
     // Acá se guardan solo las lecturas que pasaron la validación y además
     // fueron insertadas correctamente en PostgreSQL. Esa misma lista se usa
     // después para Socket.IO, así el frontend nunca recibe datos que no
     // quedaron guardados.
     const medicionesGuardadas = [];
+    const medicionesRechazadas = [];
+    const circuitosDesconocidos = [];
+    const erroresGuardado = [];
 
     for (const medidor of listaMedidores) {
       try {
@@ -205,6 +237,7 @@ function iniciarMqttListener(io) {
 
         if (!idCircuito) {
           console.warn(`⚠️ Dispositivo/circuito desconocido: ${uuidEsp32} circuito ${medidor.circuito} (¿ya se registró?)`);
+          circuitosDesconocidos.push(medidor.circuito);
           continue;
         }
 
@@ -215,6 +248,10 @@ function iniciarMqttListener(io) {
           console.warn(
             `🚫 Lectura rechazada [${uuidEsp32} circuito ${medidor.circuito}] (${resultadoValidacion.tipo}): ${resultadoValidacion.error}`
           );
+          medicionesRechazadas.push({
+            circuito: medidor.circuito,
+            motivo: resultadoValidacion.error,
+          });
           continue; // no se guarda en la base de datos
         }
 
@@ -223,16 +260,17 @@ function iniciarMqttListener(io) {
           console.warn(`⚠️ [${uuidEsp32} circuito ${medidor.circuito}] ${textoAdvertencia}`);
         });
 
+        const fechaMedicion = obtenerFechaMedicion(medidor, fechaAdquisicion);
         const filaMedicion = await pool.query(
           `INSERT INTO mediciones (circuito_id, potencia, energia, voltaje, corriente, factor_potencia, created_at)
            VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-          [idCircuito, medidor.potencia, medidor.energia, medidor.voltaje, medidor.corriente, medidor.factor_potencia, fechaAdquisicion]
+          [idCircuito, medidor.potencia, medidor.energia, medidor.voltaje, medidor.corriente, medidor.factor_potencia, fechaMedicion]
         );
         const idMedicion = filaMedicion.rows[0].id;
 
         // El agregado es derivado y nunca sustituye la medición original.
         // Si falla, la telemetría sigue siendo válida y la hora puede reconstruirse.
-        await recalcularDespuesDeInsertar(idCircuito, fechaAdquisicion);
+        await recalcularDespuesDeInsertar(idCircuito, fechaMedicion);
 
 
         // Se actualiza la última lectura únicamente después de confirmar el INSERT.
@@ -259,10 +297,11 @@ function iniciarMqttListener(io) {
           potencia: medidor.potencia,
           energia: medidor.energia,
           factor_potencia: medidor.factor_potencia,
-          created_at: fechaAdquisicion.toISOString(),
+          created_at: fechaMedicion.toISOString(),
         });
       } catch (error) {
         console.error(`❌ Error guardando medicion (circuito ${medidor.circuito}) de ${uuidEsp32}:`, error.message);
+        erroresGuardado.push({ circuito: medidor.circuito, motivo: error.message });
         // NOTA sobre rendimiento (para más adelante, no hace falta
         // ahora): cada medidor se guarda con su propio INSERT
         // independiente, para que si uno falla los demás circuitos de
@@ -275,9 +314,14 @@ function iniciarMqttListener(io) {
       }
     }
 
-    console.log(
-      `📥 [${uuidEsp32}] paquete procesado: ${medicionesGuardadas.length} de ${listaMedidores.length} lecturas guardadas`
-    );
+    imprimirResumenPaquete(uuidEsp32, {
+      estado: medicionesGuardadas.length === listaMedidores.length && listaMedidores.length > 0
+        ? 'Guardado'
+        : 'Invalido',
+      encolado: paqueteEncolado,
+      timestamp_paquete: fechaAdquisicion.toISOString(),
+      circuitos: listaMedidores.map((medidor) => medidor.circuito),
+    });
     // Reenvío en vivo al dashboard (Socket.IO)
     // No se envía el payload original directamente desde MQTT.
     // Primero se valida y se guarda en PostgreSQL.

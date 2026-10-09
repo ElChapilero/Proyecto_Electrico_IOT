@@ -328,13 +328,33 @@ bool colaLlena() { return colaCantidad == MAX_COLA; }
 
 void encolar(String json) {
   if (colaLlena()) {
+    Serial.printf("Cola llena; se descarta el paquete id=%lu\n",
+                  (unsigned long)cola[colaInicio].id);
     colaInicio = (colaInicio + 1) % MAX_COLA;
     colaCantidad--;
   }
-  cola[colaFin].id = ++messageId;
-  cola[colaFin].json = json;
+  const uint32_t idCola = ++messageId;
+
+  DynamicJsonDocument docCola(3072);
+  DeserializationError error = deserializeJson(docCola, json);
+  if (!error) {
+    docCola["encolado"] = true;
+    JsonObject colaInfo = docCola.createNestedObject("cola");
+    colaInfo["id"] = idCola;
+    colaInfo["encolado_en_ms"] = obtenerTimestampActualMs();
+
+    String jsonEncolado;
+    serializeJson(docCola, jsonEncolado);
+    cola[colaFin].json = jsonEncolado;
+  } else {
+    cola[colaFin].json = json;
+  }
+
+  cola[colaFin].id = idCola;
   colaFin = (colaFin + 1) % MAX_COLA;
   colaCantidad++;
+  Serial.printf("Paquete encolado: id=%lu pendientes=%d\n",
+                (unsigned long)idCola, colaCantidad);
 }
 
 bool desencolar() {
@@ -347,6 +367,8 @@ bool desencolar() {
 void enviarPendiente() {
   if (colaVacia() || !client.connected()) return;
   if (client.publish(topicMediciones(), cola[colaInicio].json, false, 1)) {
+    Serial.printf("Paquete encolado publicado: id=%lu pendientes_antes=%d\n",
+                  (unsigned long)cola[colaInicio].id, colaCantidad);
     desencolar();
   }
 }
@@ -393,10 +415,11 @@ void generarMedicionSimulada(int circuito, float &voltaje, float &corriente,
 
 String construirJsonMediciones() {
   DynamicJsonDocument doc(2048);
-  const uint64_t timestampMedicion = obtenerTimestampActualMs();
+  const uint64_t timestampPaquete = obtenerTimestampActualMs();
   doc["device_id"] = cfgDeviceUuid;
-  doc["timestamp_ms"] = timestampMedicion;
+  doc["timestamp_ms"] = timestampPaquete;
   doc["modo"] = "simulacion";
+  doc["encolado"] = false;
 
   JsonArray medidores = doc.createNestedArray("medidores");
 
@@ -406,7 +429,7 @@ String construirJsonMediciones() {
 
     JsonObject m = medidores.createNestedObject();
     m["circuito"] = i + 1;
-    m["timestamp_ms"] = timestampMedicion;
+    m["timestamp_ms"] = obtenerTimestampActualMs();
     m["voltaje"] = v;
     m["corriente"] = c;
     m["potencia"] = p;
