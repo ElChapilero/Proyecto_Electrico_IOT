@@ -65,41 +65,13 @@ const ultimoTimestampPorDispositivo = new Map();
 const colasPorDispositivo = new Map();
 const VENTANA_DEDUPLICACION_MS = 30000; // 30 segundos
 const EPOCH_MINIMO_DISPOSITIVO_MS = Date.UTC(2024, 0, 1);
-const DESFASE_FUTURO_MAXIMO_MS = 10 * 60 * 1000;
 
-function obtenerFechaAdquisicion(timestampMs) {
-  if (timestampMs === undefined || timestampMs === null || timestampMs === '') {
-    return null;
-  }
+function obtenerFechaDispositivo(timestampMs) {
+  if (timestampMs === undefined || timestampMs === null || timestampMs === '') return null;
   const numero = typeof timestampMs === 'number' ? timestampMs : Number(timestampMs);
-  if (!Number.isSafeInteger(numero) || numero < EPOCH_MINIMO_DISPOSITIVO_MS) {
-    return null;
-  }
-  if (numero > Date.now() + DESFASE_FUTURO_MAXIMO_MS) {
-    return null;
-  }
+  if (!Number.isSafeInteger(numero) || numero < EPOCH_MINIMO_DISPOSITIVO_MS) return null;
   const fecha = new Date(numero);
   return Number.isNaN(fecha.getTime()) ? null : fecha;
-}
-
-function obtenerFechaMedicion(medidor, fechaPaquete) {
-  return obtenerFechaAdquisicion(medidor?.timestamp_ms) || fechaPaquete;
-}
-
-function imprimirResumenPaquete(uuidEsp32, resumen) {
-  console.log(`📥 [${uuidEsp32}] paquete procesado:\n${JSON.stringify(resumen, null, 2)}`);
-}
-
-function imprimirPaqueteInvalido(uuidEsp32, motivo, datos = null) {
-  imprimirResumenPaquete(uuidEsp32, {
-    estado: 'Invalido',
-    motivo,
-    encolado: datos?.encolado === true || datos?.origen?.encolado === true,
-    timestamp_paquete: obtenerFechaAdquisicion(datos?.timestamp_ms)?.toISOString() || null,
-    circuitos: Array.isArray(datos?.medidores)
-      ? datos.medidores.map((medidor) => medidor.circuito)
-      : [],
-  });
 }
 
 function limpiarMensajesAntiguos() {
@@ -186,19 +158,16 @@ function iniciarMqttListener(io) {
       datos = JSON.parse(payload.toString());
       } catch (error) {
         console.error('⚠️ No se pudo parsear el mensaje MQTT:', error.message);
-        imprimirPaqueteInvalido(uuidEsp32, 'JSON no válido');
         return;
       }
       if (!datos || typeof datos !== 'object' || !Array.isArray(datos.medidores)) {
         console.warn(`⚠️ Payload MQTT inválido [${uuidEsp32}]: medidores debe ser una lista`);
-        imprimirPaqueteInvalido(uuidEsp32, 'medidores ausente o no es una lista', datos);
         return;
       }
 
-    const fechaAdquisicion = obtenerFechaAdquisicion(datos.timestamp_ms);
-    if (!fechaAdquisicion) {
+    const fechaPaquete = obtenerFechaDispositivo(datos.timestamp_ms);
+    if (!fechaPaquete) {
       console.warn(`⚠️ Payload MQTT descartado [${uuidEsp32}]: timestamp_ms inválido o ausente`);
-      imprimirPaqueteInvalido(uuidEsp32, 'timestamp_paquete inválido o ausente', datos);
       return;
     }
 
@@ -207,29 +176,20 @@ function iniciarMqttListener(io) {
     // exactamente el mismo mensaje.
     const timestampDispositivo = Number(datos.timestamp_ms);
     if (Number.isSafeInteger(timestampDispositivo) && esMensajeDuplicado(uuidEsp32, timestampDispositivo)) {
-      imprimirResumenPaquete(uuidEsp32, {
-        estado: 'Repetido',
-        timestamp_paquete: fechaAdquisicion.toISOString(),
-        encolado: datos.encolado === true || datos.origen?.encolado === true,
-        circuitos: datos.medidores.map((medidor) => medidor.circuito),
-      });
+      console.warn(`♻️ Mensaje duplicado descartado (QoS 1) [${uuidEsp32}] timestamp_ms=${datos.timestamp_ms}`);
       return;
     }
 
     const listaMedidores = datos.medidores;
-    // timestamp_ms del paquete identifica el envío y sirve como respaldo.
-    // Cada circuito puede traer su propio timestamp_ms de captura.
+    // Todas las lecturas de este JSON pertenecen al mismo paquete, por lo que
+    // se usa una sola marca de tiempo del backend para guardarlas.
     const recibidoEn = new Date();
-    const paqueteEncolado = datos.encolado === true || datos.origen?.encolado === true;
 
     // Acá se guardan solo las lecturas que pasaron la validación y además
     // fueron insertadas correctamente en PostgreSQL. Esa misma lista se usa
     // después para Socket.IO, así el frontend nunca recibe datos que no
     // quedaron guardados.
     const medicionesGuardadas = [];
-    const medicionesRechazadas = [];
-    const circuitosDesconocidos = [];
-    const erroresGuardado = [];
 
     for (const medidor of listaMedidores) {
       try {
@@ -237,7 +197,6 @@ function iniciarMqttListener(io) {
 
         if (!idCircuito) {
           console.warn(`⚠️ Dispositivo/circuito desconocido: ${uuidEsp32} circuito ${medidor.circuito} (¿ya se registró?)`);
-          circuitosDesconocidos.push(medidor.circuito);
           continue;
         }
 
@@ -248,10 +207,6 @@ function iniciarMqttListener(io) {
           console.warn(
             `🚫 Lectura rechazada [${uuidEsp32} circuito ${medidor.circuito}] (${resultadoValidacion.tipo}): ${resultadoValidacion.error}`
           );
-          medicionesRechazadas.push({
-            circuito: medidor.circuito,
-            motivo: resultadoValidacion.error,
-          });
           continue; // no se guarda en la base de datos
         }
 
@@ -260,7 +215,16 @@ function iniciarMqttListener(io) {
           console.warn(`⚠️ [${uuidEsp32} circuito ${medidor.circuito}] ${textoAdvertencia}`);
         });
 
-        const fechaMedicion = obtenerFechaMedicion(medidor, fechaAdquisicion);
+        const tieneTimestampMedicion = medidor.timestamp_ms !== undefined &&
+          medidor.timestamp_ms !== null && medidor.timestamp_ms !== '';
+        const fechaMedicion = tieneTimestampMedicion
+          ? obtenerFechaDispositivo(medidor.timestamp_ms)
+          : fechaPaquete;
+        if (!fechaMedicion) {
+          console.warn(`🚫 Lectura rechazada [${uuidEsp32} circuito ${medidor.circuito}]: timestamp_ms inválido`);
+          continue;
+        }
+
         const filaMedicion = await pool.query(
           `INSERT INTO mediciones (circuito_id, potencia, energia, voltaje, corriente, factor_potencia, created_at)
            VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
@@ -271,7 +235,6 @@ function iniciarMqttListener(io) {
         // El agregado es derivado y nunca sustituye la medición original.
         // Si falla, la telemetría sigue siendo válida y la hora puede reconstruirse.
         await recalcularDespuesDeInsertar(idCircuito, fechaMedicion);
-
 
         // Se actualiza la última lectura únicamente después de confirmar el INSERT.
         // Así la siguiente comparación siempre parte de un dato que sí quedó
@@ -297,11 +260,9 @@ function iniciarMqttListener(io) {
           potencia: medidor.potencia,
           energia: medidor.energia,
           factor_potencia: medidor.factor_potencia,
-          created_at: fechaMedicion.toISOString(),
         });
       } catch (error) {
         console.error(`❌ Error guardando medicion (circuito ${medidor.circuito}) de ${uuidEsp32}:`, error.message);
-        erroresGuardado.push({ circuito: medidor.circuito, motivo: error.message });
         // NOTA sobre rendimiento (para más adelante, no hace falta
         // ahora): cada medidor se guarda con su propio INSERT
         // independiente, para que si uno falla los demás circuitos de
@@ -314,14 +275,9 @@ function iniciarMqttListener(io) {
       }
     }
 
-    imprimirResumenPaquete(uuidEsp32, {
-      estado: medicionesGuardadas.length === listaMedidores.length && listaMedidores.length > 0
-        ? 'Guardado'
-        : 'Invalido',
-      encolado: paqueteEncolado,
-      timestamp_paquete: fechaAdquisicion.toISOString(),
-      circuitos: listaMedidores.map((medidor) => medidor.circuito),
-    });
+    console.log(
+      `📥 [${uuidEsp32}] paquete procesado: ${medicionesGuardadas.length} de ${listaMedidores.length} lecturas guardadas`
+    );
     // Reenvío en vivo al dashboard (Socket.IO)
     // No se envía el payload original directamente desde MQTT.
     // Primero se valida y se guarda en PostgreSQL.
@@ -339,8 +295,9 @@ function iniciarMqttListener(io) {
         topic,
         uuid_esp32: uuidEsp32,
         medidores: medicionesGuardadas,
-        timestamp: fechaAdquisicion.toISOString(),
-        timestamp_recepcion: recibidoEn.toISOString(),
+        // Socket.IO conserva la hora de recepción para que el frontend
+        // pueda tratar la medición como actual. PostgreSQL usa fechaMedicion.
+        timestamp: recibidoEn.toISOString(),
         timestamp_dispositivo_ms: datos.timestamp_ms ?? null,
       });
     }

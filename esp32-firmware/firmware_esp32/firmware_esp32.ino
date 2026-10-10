@@ -12,8 +12,6 @@
 #include <time.h>
 #include <sys/time.h>
 
-// MODO SIMULACION (igual que antes: no requiere PZEM todavia)
-#define MODO_SIMULACION true
 #define MAX_MEDIDORES 2
 
 // La configuración local queda en firmware_config.h, ignorado por Git.
@@ -118,17 +116,7 @@ bool horaSincronizada() {
   const bool valida = ahora.tv_sec >= EPOCH_MINIMO_VALIDO;
   if (valida && !relojSincronizado) {
     relojSincronizado = true;
-    struct tm utcInfo;
-    struct tm localInfo;
-    gmtime_r(&ahora.tv_sec, &utcInfo);
-    localtime_r(&ahora.tv_sec, &localInfo);
-    char utcTexto[32];
-    char localTexto[32];
-    strftime(utcTexto, sizeof(utcTexto), "%Y-%m-%dT%H:%M:%S", &utcInfo);
-    strftime(localTexto, sizeof(localTexto), "%Y-%m-%d %H:%M:%S", &localInfo);
     Serial.println("Hora sincronizada correctamente");
-    Serial.println("UTC: " + String(utcTexto));
-    Serial.println("Hora local: " + String(localTexto));
   }
   return valida;
 }
@@ -335,20 +323,8 @@ void encolar(String json) {
   }
   const uint32_t idCola = ++messageId;
 
-  DynamicJsonDocument docCola(3072);
-  DeserializationError error = deserializeJson(docCola, json);
-  if (!error) {
-    docCola["encolado"] = true;
-    JsonObject colaInfo = docCola.createNestedObject("cola");
-    colaInfo["id"] = idCola;
-    colaInfo["encolado_en_ms"] = obtenerTimestampActualMs();
-
-    String jsonEncolado;
-    serializeJson(docCola, jsonEncolado);
-    cola[colaFin].json = jsonEncolado;
-  } else {
-    cola[colaFin].json = json;
-  }
+  // Se conserva el paquete original para no informar al backend que fue encolado.
+  cola[colaFin].json = json;
 
   cola[colaFin].id = idCola;
   colaFin = (colaFin + 1) % MAX_COLA;
@@ -416,11 +392,7 @@ void generarMedicionSimulada(int circuito, float &voltaje, float &corriente,
 String construirJsonMediciones() {
   DynamicJsonDocument doc(2048);
   const uint64_t timestampPaquete = obtenerTimestampActualMs();
-  doc["device_id"] = cfgDeviceUuid;
   doc["timestamp_ms"] = timestampPaquete;
-  doc["modo"] = "simulacion";
-  doc["encolado"] = false;
-
   JsonArray medidores = doc.createNestedArray("medidores");
 
   for (int i = 0; i < MAX_MEDIDORES; i++) {
