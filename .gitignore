@@ -24,6 +24,7 @@
 
 # Configuración local del firmware ESP32
 esp32-firmware/firmware_config.h
+esp32-firmware/firmware_config_test.h
 
 # Archivos locales de IDE/sistema
 .vscode/

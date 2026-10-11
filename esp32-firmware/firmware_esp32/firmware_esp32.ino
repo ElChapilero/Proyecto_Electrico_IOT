@@ -9,14 +9,55 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+#include <PZEM004Tv30.h>
+#include <math.h>
 #include <time.h>
 #include <sys/time.h>
-
-#define MAX_MEDIDORES 2
 
 // La configuración local queda en firmware_config.h, ignorado por Git.
 // Copia firmware_config.example.h como firmware_config.h antes de compilar.
 #include "firmware_config.h"
+
+// Valores predeterminados para configuraciones locales antiguas que todavía
+// no tienen las opciones del PZEM. El archivo de ejemplo es la fuente de
+// configuración recomendada.
+#ifndef PZEM_MEDIDORES_HABILITADOS
+#define PZEM_MEDIDORES_HABILITADOS 2
+#endif
+#ifndef PZEM_SERIAL_BAUD_RATE
+#define PZEM_SERIAL_BAUD_RATE 9600
+#endif
+#ifndef PZEM_1_CIRCUITO
+#define PZEM_1_CIRCUITO 1
+#endif
+#ifndef PZEM_1_RX_PIN
+#define PZEM_1_RX_PIN 16
+#endif
+#ifndef PZEM_1_TX_PIN
+#define PZEM_1_TX_PIN 17
+#endif
+#ifndef PZEM_1_DIRECCION
+#define PZEM_1_DIRECCION 0xF8
+#endif
+#ifndef PZEM_2_CIRCUITO
+#define PZEM_2_CIRCUITO 2
+#endif
+#ifndef PZEM_2_RX_PIN
+#define PZEM_2_RX_PIN 18
+#endif
+#ifndef PZEM_2_TX_PIN
+#define PZEM_2_TX_PIN 19
+#endif
+#ifndef PZEM_2_DIRECCION
+#define PZEM_2_DIRECCION 0xF8
+#endif
+
+#if PZEM_MEDIDORES_HABILITADOS < 1 || PZEM_MEDIDORES_HABILITADOS > 2
+#error "PZEM_MEDIDORES_HABILITADOS debe ser 1 o 2"
+#endif
+
+static_assert(PZEM_SERIAL_BAUD_RATE == 9600,
+              "PZEM004Tv30 requiere 9600 baudios");
 
 // ALMACENAMIENTO PERSISTENTE (NVS)
 Preferences prefs;
@@ -302,6 +343,13 @@ String topicCmd()        { return "casa/" + cfgDeviceUuid + "/comandos"; }
 WiFiClientSecure net;
 MQTTClient client(1024);
 
+#if PZEM_MEDIDORES_HABILITADOS >= 1
+PZEM004Tv30 pzem1(Serial1, PZEM_1_RX_PIN, PZEM_1_TX_PIN, PZEM_1_DIRECCION);
+#endif
+#if PZEM_MEDIDORES_HABILITADOS >= 2
+PZEM004Tv30 pzem2(Serial2, PZEM_2_RX_PIN, PZEM_2_TX_PIN, PZEM_2_DIRECCION);
+#endif
+
 const unsigned long sendInterval = 5000;
 unsigned long lastSend = 0;
 uint32_t messageId = 0;
@@ -368,57 +416,60 @@ void reconectarMQTT() {
   }
 }
 
-// GENERACION DE DATOS SIMULADOS (igual que antes)
-float energiaAcumulada[MAX_MEDIDORES] = {0.0, 0.0};
+bool agregarMedicionPzem(PZEM004Tv30& pzem, uint8_t circuito, JsonArray medidores) {
+  const float voltaje = pzem.voltage();
+  const float corriente = pzem.current();
+  const float potencia = pzem.power();
+  const float energia = pzem.energy();
+  const float factorPotencia = pzem.pf();
 
-float randomFloat(float minimo, float maximo) {
-  long valor = random((long)(minimo * 1000), (long)(maximo * 1000));
-  return valor / 1000.0;
+  if (!isfinite(voltaje) || !isfinite(corriente) || !isfinite(potencia) ||
+      !isfinite(energia) || !isfinite(factorPotencia)) {
+    Serial.printf("PZEM circuito %u: lectura invalida o sin respuesta\n", circuito);
+    return false;
+  }
+
+  JsonObject medidor = medidores.createNestedObject();
+  medidor["circuito"] = circuito;
+  medidor["timestamp_ms"] = obtenerTimestampActualMs();
+  medidor["voltaje"] = voltaje;
+  medidor["corriente"] = corriente;
+  medidor["potencia"] = potencia;
+  medidor["energia"] = energia;
+  medidor["factor_potencia"] = factorPotencia;
+
+  Serial.printf("PZEM circuito %u: V=%.2f I=%.3f P=%.2f E=%.3f FP=%.3f\n",
+                circuito, voltaje, corriente, potencia, energia, factorPotencia);
+  return true;
 }
 
-void generarMedicionSimulada(int circuito, float &voltaje, float &corriente,
-                              float &potencia, float &energia,
-                              float &factorPotencia) {
-  voltaje = randomFloat(118.0, 125.0);
-  corriente = (circuito == 1) ? randomFloat(0.5, 5.0) : randomFloat(0.2, 3.5);
-  factorPotencia = randomFloat(0.80, 0.99);
-  potencia = voltaje * corriente * factorPotencia;
-
-  const float horas = sendInterval / 3600000.0;
-  energiaAcumulada[circuito] += (potencia * horas) / 1000.0;
-  energia = energiaAcumulada[circuito];
-}
-
-String construirJsonMediciones() {
+bool construirJsonMediciones(String& salida) {
   DynamicJsonDocument doc(2048);
   const uint64_t timestampPaquete = obtenerTimestampActualMs();
   doc["timestamp_ms"] = timestampPaquete;
   JsonArray medidores = doc.createNestedArray("medidores");
+  uint8_t medicionesValidas = 0;
 
-  for (int i = 0; i < MAX_MEDIDORES; i++) {
-    float v, c, p, e, fp;
-    generarMedicionSimulada(i, v, c, p, e, fp);
+#if PZEM_MEDIDORES_HABILITADOS >= 1
+  if (agregarMedicionPzem(pzem1, PZEM_1_CIRCUITO, medidores)) medicionesValidas++;
+#endif
+#if PZEM_MEDIDORES_HABILITADOS >= 2
+  if (agregarMedicionPzem(pzem2, PZEM_2_CIRCUITO, medidores)) medicionesValidas++;
+#endif
 
-    JsonObject m = medidores.createNestedObject();
-    m["circuito"] = i + 1;
-    m["timestamp_ms"] = obtenerTimestampActualMs();
-    m["voltaje"] = v;
-    m["corriente"] = c;
-    m["potencia"] = p;
-    m["energia"] = e;
-    m["factor_potencia"] = fp;
+  if (medicionesValidas == 0) {
+    Serial.println("No se publica el paquete: ningun PZEM respondio correctamente");
+    return false;
   }
 
-  String salida;
   serializeJson(doc, salida);
-  return salida;
+  return true;
 }
 
 // SETUP
 void setup() {
   Serial.begin(115200);
   delay(1000);
-  randomSeed(analogRead(34) + micros());
 
   generarUuidDispositivo();
   cargarConfiguracion();
@@ -518,7 +569,10 @@ void loop() {
 
       if (millis() - lastSend >= sendInterval) {
         lastSend = millis();
-        String paquete = construirJsonMediciones();
+        String paquete;
+        if (!construirJsonMediciones(paquete)) {
+          break;
+        }
 
         bool ok = client.connected() &&
                   client.publish(topicMediciones(), paquete, false, 1);
