@@ -1,11 +1,9 @@
-#pragma once
-
 // Copia este archivo como firmware_config.h y completa los valores locales.
 // firmware_config.h está excluido por .gitignore.
 
-const char* BACKEND_HOST          = "IP_O_HOST_DEL_BACKEND";
-const int   BACKEND_PORT          = 3000;
-const char* BACKEND_REGISTRO_PATH = "/api/dispositivos/registrar";
+const char* BACKEND_HOST = "IP_O_HOST_DEL_BACKEND";
+const int   BACKEND_PORT = 3000;
+const char* BACKEND_REGISTRO_PATH = "/api/v1/dispositivos/registrar";
 
 const char* MQTT_BROKER_HOST = "IP_O_HOST_DEL_BROKER";
 const int   MQTT_BROKER_PORT = 8883; // 8883 con TLS; 1883 sin TLS

@@ -1,35 +1,33 @@
+// Guardar los intentos por ruta e IP
 const registros = new Map(); // clave "nombreRuta:ip" -> { intentos, expiraEn }
 
+// Eliminar registros con el tiempo terminado
 function limpiarRegistrosVencidos() {
   const ahora = Date.now();
-  for (const [clave, registro] of registros) {
+  for (const [clave, registro] of registros) { // recorrer los registros
     if (ahora >= registro.expiraEn) registros.delete(clave);
   }
 }
 
 /**
- * Crea un middleware que limita cuantas veces una misma IP puede llamar
- * a la ruta donde se lo use, dentro de una ventana de tiempo.
- *
  * @param {object} opciones
- * @param {number} opciones.maximoIntentos - intentos permitidos por ventana.
+ * @param {number} opciones.maximoIntentos - intentos permitidos.
  * @param {number} opciones.ventanaMs - duracion de la ventana, en ms.
  * @param {string} opciones.nombreRuta - identificador unico de la ruta,
- *        para no mezclar el conteo de dos rutas distintas que usen este
- *        mismo middleware con distinta configuracion (ej. "login" vs
- *        "registrar-dispositivo").
  */
+
+// limitador de intentos
 function crearLimitadorDeIntentos({ maximoIntentos, ventanaMs, nombreRuta }) {
   if (!nombreRuta) {
     throw new Error("crearLimitadorDeIntentos requiere 'nombreRuta'");
   }
 
   return function limitador(req, res, next) {
-    limpiarRegistrosVencidos();
+    limpiarRegistrosVencidos(); // eliminar registros vencidos
 
-    const clave = `${nombreRuta}:${req.ip}`;
+    const clave = `${nombreRuta}:${req.ip}`; // identificar la ruta y la IP
     const ahora = Date.now();
-    let registro = registros.get(clave);
+    let registro = registros.get(clave); // buscar los intentos guardados
 
     if (!registro || ahora >= registro.expiraEn) {
       registro = { intentos: 0, expiraEn: ahora + ventanaMs };
@@ -38,6 +36,7 @@ function crearLimitadorDeIntentos({ maximoIntentos, ventanaMs, nombreRuta }) {
 
     registro.intentos += 1;
 
+    // cuando puede volver a intentar
     if (registro.intentos > maximoIntentos) {
       const segundosRestantes = Math.ceil((registro.expiraEn - ahora) / 1000);
       res.set("Retry-After", String(segundosRestantes));
@@ -50,4 +49,4 @@ function crearLimitadorDeIntentos({ maximoIntentos, ventanaMs, nombreRuta }) {
   };
 }
 
-module.exports = { crearLimitadorDeIntentos };
+module.exports = { crearLimitadorDeIntentos }; // permite usarlo en otros archivos

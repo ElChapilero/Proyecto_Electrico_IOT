@@ -310,7 +310,8 @@ bool registrarEnBackend(const String& codigo) {
 
   int codigoHttp = http.POST(cuerpoStr);
 
-  if (codigoHttp != 200) {
+  // El backend legado responde 200 y la API versionada responde 201.
+  if (codigoHttp != 200 && codigoHttp != 201) {
     Serial.printf("Registro fallo, codigo=%d\n", codigoHttp);
     Serial.println(http.getString());
     http.end();
