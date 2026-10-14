@@ -18,40 +18,6 @@
 // Copia firmware_config.example.h como firmware_config.h antes de compilar.
 #include "firmware_config.h"
 
-// Valores predeterminados para configuraciones locales antiguas que todavía
-// no tienen las opciones del PZEM. El archivo de ejemplo es la fuente de
-// configuración recomendada.
-#ifndef PZEM_MEDIDORES_HABILITADOS
-#define PZEM_MEDIDORES_HABILITADOS 2
-#endif
-#ifndef PZEM_SERIAL_BAUD_RATE
-#define PZEM_SERIAL_BAUD_RATE 9600
-#endif
-#ifndef PZEM_1_CIRCUITO
-#define PZEM_1_CIRCUITO 1
-#endif
-#ifndef PZEM_1_RX_PIN
-#define PZEM_1_RX_PIN 16
-#endif
-#ifndef PZEM_1_TX_PIN
-#define PZEM_1_TX_PIN 17
-#endif
-#ifndef PZEM_1_DIRECCION
-#define PZEM_1_DIRECCION 0xF8
-#endif
-#ifndef PZEM_2_CIRCUITO
-#define PZEM_2_CIRCUITO 2
-#endif
-#ifndef PZEM_2_RX_PIN
-#define PZEM_2_RX_PIN 18
-#endif
-#ifndef PZEM_2_TX_PIN
-#define PZEM_2_TX_PIN 19
-#endif
-#ifndef PZEM_2_DIRECCION
-#define PZEM_2_DIRECCION 0xF8
-#endif
-
 #if PZEM_MEDIDORES_HABILITADOS < 1 || PZEM_MEDIDORES_HABILITADOS > 2
 #error "PZEM_MEDIDORES_HABILITADOS debe ser 1 o 2"
 #endif
@@ -69,6 +35,7 @@ String cfgMqttUser;
 String cfgMqttPass;
 bool   cfgProvisionado = false;
 
+// Recupera de la memoria flash las credenciales y el estado de registro.
 void cargarConfiguracion() {
   prefs.begin("iot_cfg", true);
   cfgWifiSsid     = prefs.getString("wifi_ssid", "");
@@ -80,6 +47,7 @@ void cargarConfiguracion() {
   prefs.end();
 }
 
+// Guarda las credenciales WiFi y actualiza la copia usada por el programa.
 void guardarWifi(const String& ssid, const String& pass) {
   prefs.begin("iot_cfg", false);
   prefs.putString("wifi_ssid", ssid);
@@ -89,6 +57,7 @@ void guardarWifi(const String& ssid, const String& pass) {
   cfgWifiPass = pass;
 }
 
+// Persiste las credenciales MQTT entregadas por el backend.
 void guardarCredencialesMqtt(const String& user, const String& pass) {
   prefs.begin("iot_cfg", false);
   prefs.putString("mqtt_user", user);
@@ -100,6 +69,7 @@ void guardarCredencialesMqtt(const String& user, const String& pass) {
   cfgProvisionado = true;
 }
 
+// Genera una identidad estable a partir de la MAC del ESP32 si aún no existe.
 void generarUuidDispositivo() {
   prefs.begin("iot_cfg", true);
   cfgDeviceUuid = prefs.getString("device_uuid", "");
@@ -120,6 +90,7 @@ void generarUuidDispositivo() {
 }
 
 // ESTADOS DEL APROVISIONAMIENTO
+// Flujo de aprovisionamiento: BLE -> WiFi -> portal -> operación normal.
 enum Estado { ESPERANDO_BLE, CONECTANDO_WIFI, PORTAL_WEB, OPERACION_NORMAL };
 Estado estadoActual = ESPERANDO_BLE;
 
@@ -128,7 +99,7 @@ String ssidRecibidoBLE;
 String passRecibidoBLE;
 
 unsigned long inicioIntentoWifi = 0;
-const unsigned long TIMEOUT_WIFI_MS = 20000;
+const unsigned long TIMEOUT_WIFI_MS = 20000; // Tiempo máximo de cada intento WiFi.
 
 bool registroCompletado = false;
 
@@ -138,19 +109,21 @@ const char* ZONA_HORARIA = "COT5";
 const char* SERVIDOR_NTP_1 = "pool.ntp.org";
 const char* SERVIDOR_NTP_2 = "time.nist.gov";
 const char* SERVIDOR_NTP_3 = "time.google.com";
-const time_t EPOCH_MINIMO_VALIDO = 1704067200; // 2024-01-01 UTC
+const time_t EPOCH_MINIMO_VALIDO = 1704067200; // Umbral para distinguir una hora no inicializada.
 const unsigned long INTERVALO_LOG_HORA_MS = 30000;
 unsigned long ultimoLogHoraNoSincronizada = 0;
 bool relojSincronizado = false;
 bool wifiEstabaConectado = false;
 unsigned long ultimoIntentoReconectarWifi = 0;
 
+// Solicita la hora a los servidores NTP en el orden indicado.
 void iniciarSincronizacionHora() {
   configTzTime(ZONA_HORARIA, SERVIDOR_NTP_1, SERVIDOR_NTP_2, SERVIDOR_NTP_3);
   relojSincronizado = false;
   Serial.println("Sincronizando hora NTP...");
 }
 
+// Considera válida la hora cuando supera el umbral mínimo configurado.
 bool horaSincronizada() {
   struct timeval ahora;
   gettimeofday(&ahora, nullptr);
@@ -162,6 +135,7 @@ bool horaSincronizada() {
   return valida;
 }
 
+// Convierte segundos y microsegundos del reloj del sistema a milisegundos.
 uint64_t obtenerTimestampActualMs() {
   struct timeval ahora;
   gettimeofday(&ahora, nullptr);
@@ -176,6 +150,7 @@ uint64_t obtenerTimestampActualMs() {
 
 BLECharacteristic* caracteristicaEstado = nullptr;
 
+// Envía al móvil el estado BLE como un pequeño objeto JSON.
 void actualizarEstadoBLE(const String& estado, const String& info = "") {
   if (!caracteristicaEstado) return;
 
@@ -190,6 +165,7 @@ void actualizarEstadoBLE(const String& estado, const String& info = "") {
   caracteristicaEstado->notify();
 }
 
+// Recibe por BLE un JSON con las claves ssid y password.
 class CallbackWifiBLE: public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic* car) override {
     String valor = car->getValue().c_str();
@@ -210,6 +186,7 @@ class CallbackWifiBLE: public BLECharacteristicCallbacks {
   }
 };
 
+// Crea el servicio BLE, sus características y comienza la publicidad.
 void iniciarBLE() {
   BLEDevice::init(("ESP32-" + cfgDeviceUuid).c_str());
   BLEDevice::setMTU(247); // margen para SSID/password largos
@@ -258,12 +235,14 @@ const char* PAGINA_HTML =
   "<button type='submit'>Vincular</button>"
   "</form></body></html>";
 
+// Sirve la página que permite introducir el código de vinculación.
 void manejarRaizWeb() {
   servidorWeb.send(200, "text/html", PAGINA_HTML);
 }
 
 bool registrarEnBackend(const String& codigo); // fwd decl
 
+// Procesa el código recibido y solicita al backend las credenciales MQTT.
 void manejarRegistroWeb() {
   if (!servidorWeb.hasArg("codigo")) {
     servidorWeb.send(400, "text/plain", "Falta el codigo");
@@ -282,6 +261,7 @@ void manejarRegistroWeb() {
   }
 }
 
+// Registra las rutas HTTP y deja disponible el portal local.
 void iniciarPortalWeb() {
   servidorWeb.on("/", manejarRaizWeb);
   servidorWeb.on("/registrar", HTTP_POST, manejarRegistroWeb);
@@ -294,6 +274,7 @@ void iniciarPortalWeb() {
 }
 
 // REGISTRO EN EL BACKEND
+// Vincula el dispositivo y guarda las credenciales MQTT devueltas.
 bool registrarEnBackend(const String& codigo) {
   HTTPClient http;
   String url = "http://" + String(BACKEND_HOST) + ":" + String(BACKEND_PORT) + BACKEND_REGISTRO_PATH;
@@ -345,6 +326,7 @@ WiFiClientSecure net;
 MQTTClient client(1024);
 
 #if PZEM_MEDIDORES_HABILITADOS >= 1
+// Cada instancia representa un medidor físico habilitado mediante configuración.
 PZEM004Tv30 pzem1(Serial1, PZEM_1_RX_PIN, PZEM_1_TX_PIN, PZEM_1_DIRECCION);
 #endif
 #if PZEM_MEDIDORES_HABILITADOS >= 2
@@ -355,7 +337,7 @@ const unsigned long sendInterval = 5000;
 unsigned long lastSend = 0;
 uint32_t messageId = 0;
 
-const int MAX_COLA = 20;
+const int MAX_COLA = 20; // Paquetes retenidos mientras MQTT no está disponible.
 struct Paquete { uint32_t id; String json; };
 Paquete cola[MAX_COLA];
 int colaInicio = 0, colaFin = 0, colaCantidad = 0;
@@ -363,6 +345,7 @@ int colaInicio = 0, colaFin = 0, colaCantidad = 0;
 bool colaVacia() { return colaCantidad == 0; }
 bool colaLlena() { return colaCantidad == MAX_COLA; }
 
+// Añade un paquete a una cola circular; si se llena, descarta el más antiguo.
 void encolar(String json) {
   if (colaLlena()) {
     Serial.printf("Cola llena; se descarta el paquete id=%lu\n",
@@ -389,6 +372,7 @@ bool desencolar() {
   return true;
 }
 
+// Publica el primer paquete pendiente y lo retira solo si MQTT confirma el envío.
 void enviarPendiente() {
   if (colaVacia() || !client.connected()) return;
   if (client.publish(topicMediciones(), cola[colaInicio].json, false, 1)) {
@@ -404,6 +388,7 @@ void alRecibirMensaje(String &topic, String &payload) {
 
 unsigned long ultimoIntentoMQTT = 0;
 
+// Reintenta la conexión MQTT con una separación mínima de cinco segundos.
 void reconectarMQTT() {
   if (millis() - ultimoIntentoMQTT < 5000) return;
   ultimoIntentoMQTT = millis();
@@ -417,6 +402,7 @@ void reconectarMQTT() {
   }
 }
 
+// Lee un PZEM, valida sus valores y añade la lectura al JSON de mediciones.
 bool agregarMedicionPzem(PZEM004Tv30& pzem, uint8_t circuito, JsonArray medidores) {
   const float voltaje = pzem.voltage();
   const float corriente = pzem.current();
@@ -444,6 +430,7 @@ bool agregarMedicionPzem(PZEM004Tv30& pzem, uint8_t circuito, JsonArray medidore
   return true;
 }
 
+// Construye el paquete solo si al menos un PZEM respondió correctamente.
 bool construirJsonMediciones(String& salida) {
   DynamicJsonDocument doc(2048);
   const uint64_t timestampPaquete = obtenerTimestampActualMs();
@@ -468,6 +455,7 @@ bool construirJsonMediciones(String& salida) {
 }
 
 // SETUP
+// Inicializa hardware, configuración persistente y clientes de red.
 void setup() {
   Serial.begin(115200);
   delay(1000);
@@ -498,6 +486,7 @@ void setup() {
 }
 
 // LOOP
+// Ejecuta el estado actual del dispositivo y sus tareas de comunicación.
 void loop() {
   switch (estadoActual) {
 
@@ -539,6 +528,7 @@ void loop() {
       break;
 
     case OPERACION_NORMAL:
+      // Mantiene WiFi/MQTT, sincroniza la hora y publica o encola mediciones.
       if (WiFi.status() != WL_CONNECTED) {
         wifiEstabaConectado = false;
         relojSincronizado = false;

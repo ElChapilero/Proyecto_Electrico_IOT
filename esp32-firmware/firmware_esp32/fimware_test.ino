@@ -1,24 +1,25 @@
+// librerias
 #include <WiFi.h>
-#include <WiFiClientSecure.h>
-#include <MQTT.h>
+#include <WiFiClientSecure.h> // Cliente TLS para MQTT seguro
+#include <MQTT.h> // Cliente MQTT
 #include <ArduinoJson.h>
-#include <Preferences.h>
-#include <WebServer.h>
-#include <HTTPClient.h>
+#include <Preferences.h> // Guardar datos en memoria flash (NVS)
+#include <WebServer.h> // Servidor web local del portal
+#include <HTTPClient.h> // Peticiones HTTP al backend
 #include <BLEDevice.h>
 #include <BLEServer.h>
-#include <BLEUtils.h>
-#include <BLE2902.h>
+#include <BLEUtils.h> // Utilidades BLE
+#include <BLE2902.h> // notificaciones BLE
 #include <time.h>
 #include <sys/time.h>
 
-#define MAX_MEDIDORES 2
+#define MAX_MEDIDORES 2 // Cantidad de circuitos simulados que se reportan.
 
 // La configuración local queda en firmware_config.h, ignorado por Git.
 // Copia firmware_config.example.h como firmware_config.h antes de compilar.
 #include "firmware_config_test.h"
 
-// ALMACENAMIENTO PERSISTENTE (NVS)
+// almacenamiento persistente (NVS)
 Preferences prefs;
 
 String cfgWifiSsid;
@@ -26,28 +27,31 @@ String cfgWifiPass;
 String cfgDeviceUuid;
 String cfgMqttUser;
 String cfgMqttPass;
-bool   cfgProvisionado = false;
+bool   cfgProvisionado = false; // True si ya se vinculó al backend
 
+// Recupera de la memoria flash las credenciales y el estado de registro.
 void cargarConfiguracion() {
-  prefs.begin("iot_cfg", true);
+  prefs.begin("iot_cfg", true); // olo lectura
   cfgWifiSsid     = prefs.getString("wifi_ssid", "");
   cfgWifiPass     = prefs.getString("wifi_pass", "");
   cfgDeviceUuid   = prefs.getString("device_uuid", "");
   cfgMqttUser     = prefs.getString("mqtt_user", "");
   cfgMqttPass     = prefs.getString("mqtt_pass", "");
   cfgProvisionado = prefs.getBool("provisionado", false);
-  prefs.end();
+  prefs.end(); // Cerrar acceso a flash
 }
 
+// Guarda las credenciales WiFi y actualiza la copia usada por el programa.
 void guardarWifi(const String& ssid, const String& pass) {
-  prefs.begin("iot_cfg", false);
+  prefs.begin("iot_cfg", false); // Abrir en modo escritura
   prefs.putString("wifi_ssid", ssid);
   prefs.putString("wifi_pass", pass);
   prefs.end();
-  cfgWifiSsid = ssid;
+  cfgWifiSsid = ssid; // Actualizar copia en RAM
   cfgWifiPass = pass;
 }
 
+// Persiste las credenciales MQTT entregadas por el backend.
 void guardarCredencialesMqtt(const String& user, const String& pass) {
   prefs.begin("iot_cfg", false);
   prefs.putString("mqtt_user", user);
@@ -59,68 +63,73 @@ void guardarCredencialesMqtt(const String& user, const String& pass) {
   cfgProvisionado = true;
 }
 
+// Genera una identidad estable a partir de la MAC del ESP32 si aún no existe.
 void generarUuidDispositivo() {
   prefs.begin("iot_cfg", true);
-  cfgDeviceUuid = prefs.getString("device_uuid", "");
+  cfgDeviceUuid = prefs.getString("device_uuid", ""); // Buscar UUID existente
   prefs.end();
 
   if (cfgDeviceUuid.length() > 0) return; // ya existe, no se regenera
 
-  // Identificador estable por chip (no hace falta que el usuario lo escriba)
-  uint64_t chipid = ESP.getEfuseMac();
+  // Identificador por chip
+  uint64_t chipid = ESP.getEfuseMac(); // MAC única grabada en el chip
   char buf[13];
-  snprintf(buf, sizeof(buf), "%04X%08X",
+  snprintf(buf, sizeof(buf), "%04X%08X", // Formatear MAC como hexadecimal
            (uint16_t)(chipid >> 32), (uint32_t)chipid);
-  cfgDeviceUuid = "esp32-" + String(buf);
+  cfgDeviceUuid = "esp32-" + String(buf); // UUID final con prefijo
 
   prefs.begin("iot_cfg", false);
-  prefs.putString("device_uuid", cfgDeviceUuid);
+  prefs.putString("device_uuid", cfgDeviceUuid); // Guardarlo
   prefs.end();
 }
 
-// ESTADOS DEL APROVISIONAMIENTO
+// ESTADOS
+// Flujo de aprovisionamiento: BLE -> WiFi -> portal -> operación normal.
 enum Estado { ESPERANDO_BLE, CONECTANDO_WIFI, PORTAL_WEB, OPERACION_NORMAL };
-Estado estadoActual = ESPERANDO_BLE;
+Estado estadoActual = ESPERANDO_BLE; // Estado inicial
 
 volatile bool credencialesWifiRecibidas = false;
-String ssidRecibidoBLE;
-String passRecibidoBLE;
+String ssidRecibidoBLE; // SSID recibido por Bluetooth
+String passRecibidoBLE; // Clave recibida por Bluetooth
 
 unsigned long inicioIntentoWifi = 0;
-const unsigned long TIMEOUT_WIFI_MS = 20000;
+const unsigned long TIMEOUT_WIFI_MS = 20000; // Tiempo máximo de cada intento WiFi.
 
-bool registroCompletado = false;
+bool registroCompletado = false; // True al vincular con backend
 
-// HORA ABSOLUTA DEL DISPOSITIVO
-// COT5 corresponde a Colombia (UTC-05:00, sin horario de verano).
-const char* ZONA_HORARIA = "COT5";
-const char* SERVIDOR_NTP_1 = "pool.ntp.org";
+// HORA DEL DISPOSITIVO
+const char* ZONA_HORARIA = "COT5"; // COT5 (UTC-05:00).
+// Servidores de hora de respaldo
+const char* SERVIDOR_NTP_1 = "pool.ntp.org"; 
 const char* SERVIDOR_NTP_2 = "time.nist.gov";
 const char* SERVIDOR_NTP_3 = "time.google.com";
-const time_t EPOCH_MINIMO_VALIDO = 1704067200; // 2024-01-01 UTC
+const time_t EPOCH_MINIMO_VALIDO = 1704067200; // Umbral para distinguir una hora no inicializada.
 const unsigned long INTERVALO_LOG_HORA_MS = 30000;
 unsigned long ultimoLogHoraNoSincronizada = 0;
-bool relojSincronizado = false;
-bool wifiEstabaConectado = false;
-unsigned long ultimoIntentoReconectarWifi = 0;
+bool relojSincronizado = false; // True si NTP ya respondió
+bool wifiEstabaConectado = false; // Detecta reconexiones WiFi
+unsigned long ultimoIntentoReconectarWifi = 0; // Controla reintentos de WiFi
 
+// Solicita la hora a los servidores NTP en el orden indicado.
 void iniciarSincronizacionHora() {
-  configTzTime(ZONA_HORARIA, SERVIDOR_NTP_1, SERVIDOR_NTP_2, SERVIDOR_NTP_3);
+  configTzTime(ZONA_HORARIA, SERVIDOR_NTP_1, SERVIDOR_NTP_2, SERVIDOR_NTP_3); // Pedir hora NTP
   relojSincronizado = false;
   Serial.println("Sincronizando hora NTP...");
 }
 
+// Considera válida la hora cuando supera el umbral mínimo configurado.
 bool horaSincronizada() {
   struct timeval ahora;
-  gettimeofday(&ahora, nullptr);
-  const bool valida = ahora.tv_sec >= EPOCH_MINIMO_VALIDO;
-  if (valida && !relojSincronizado) {
+  gettimeofday(&ahora, nullptr); // Leer reloj interno
+  const bool valida = ahora.tv_sec >= EPOCH_MINIMO_VALIDO; // Fecha razonable = sincronizada
+  if (valida && !relojSincronizado) { // Solo avisar la primera vez
     relojSincronizado = true;
     Serial.println("Hora sincronizada correctamente");
   }
   return valida;
 }
 
+// Convierte segundos y microsegundos del reloj del sistema a milisegundos.
 uint64_t obtenerTimestampActualMs() {
   struct timeval ahora;
   gettimeofday(&ahora, nullptr);
@@ -129,12 +138,13 @@ uint64_t obtenerTimestampActualMs() {
 }
 
 // BLUETOOTH (BLE) - RECEPCION DE CREDENCIALES WIFI
-#define SERVICE_UUID    "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define CHAR_WIFI_UUID  "beb5483e-36e1-4688-b7f5-ea07361b26a8"
-#define CHAR_ESTADO_UUID "0972ef8c-7613-4075-ad52-756f33d4da91"
+#define SERVICE_UUID    "4fafc201-1fb5-459e-8fcc-c5c9c331914b" // UUID del servicio BLE
+#define CHAR_WIFI_UUID  "beb5483e-36e1-4688-b7f5-ea07361b26a8"  // recibe WiFi
+#define CHAR_ESTADO_UUID "0972ef8c-7613-4075-ad52-756f33d4da91" // informa estado
 
-BLECharacteristic* caracteristicaEstado = nullptr;
+BLECharacteristic* caracteristicaEstado = nullptr; // Puntero para notificar al celular
 
+// Envía al móvil el estado BLE como un pequeño objeto JSON.
 void actualizarEstadoBLE(const String& estado, const String& info = "") {
   if (!caracteristicaEstado) return;
 
@@ -149,6 +159,7 @@ void actualizarEstadoBLE(const String& estado, const String& info = "") {
   caracteristicaEstado->notify();
 }
 
+// Recibe por BLE un JSON con las claves ssid y password.
 class CallbackWifiBLE: public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic* car) override {
     String valor = car->getValue().c_str();
@@ -169,6 +180,7 @@ class CallbackWifiBLE: public BLECharacteristicCallbacks {
   }
 };
 
+// Crea el servicio BLE, sus características y comienza la publicidad.
 void iniciarBLE() {
   BLEDevice::init(("ESP32-" + cfgDeviceUuid).c_str());
   BLEDevice::setMTU(247); // margen para SSID/password largos
@@ -217,12 +229,14 @@ const char* PAGINA_HTML =
   "<button type='submit'>Vincular</button>"
   "</form></body></html>";
 
+// Sirve la página que permite introducir el código de vinculación.
 void manejarRaizWeb() {
   servidorWeb.send(200, "text/html", PAGINA_HTML);
 }
 
 bool registrarEnBackend(const String& codigo); // fwd decl
 
+// Procesa el código recibido y solicita al backend las credenciales MQTT.
 void manejarRegistroWeb() {
   if (!servidorWeb.hasArg("codigo")) {
     servidorWeb.send(400, "text/plain", "Falta el codigo");
@@ -241,6 +255,7 @@ void manejarRegistroWeb() {
   }
 }
 
+// Registra las rutas HTTP y deja disponible el portal local.
 void iniciarPortalWeb() {
   servidorWeb.on("/", manejarRaizWeb);
   servidorWeb.on("/registrar", HTTP_POST, manejarRegistroWeb);
@@ -253,6 +268,7 @@ void iniciarPortalWeb() {
 }
 
 // REGISTRO EN EL BACKEND
+// Vincula el dispositivo y guarda las credenciales MQTT devueltas.
 bool registrarEnBackend(const String& codigo) {
   HTTPClient http;
   String url = "http://" + String(BACKEND_HOST) + ":" + String(BACKEND_PORT) + BACKEND_REGISTRO_PATH;
@@ -307,7 +323,7 @@ const unsigned long sendInterval = 5000;
 unsigned long lastSend = 0;
 uint32_t messageId = 0;
 
-const int MAX_COLA = 20;
+const int MAX_COLA = 20; // Paquetes retenidos mientras MQTT no está disponible.
 struct Paquete { uint32_t id; String json; };
 Paquete cola[MAX_COLA];
 int colaInicio = 0, colaFin = 0, colaCantidad = 0;
@@ -315,6 +331,7 @@ int colaInicio = 0, colaFin = 0, colaCantidad = 0;
 bool colaVacia() { return colaCantidad == 0; }
 bool colaLlena() { return colaCantidad == MAX_COLA; }
 
+// Añade un paquete a una cola circular; si se llena, descarta el más antiguo.
 void encolar(String json) {
   if (colaLlena()) {
     Serial.printf("Cola llena; se descarta el paquete id=%lu\n",
@@ -341,6 +358,7 @@ bool desencolar() {
   return true;
 }
 
+// Publica el primer paquete pendiente y lo retira solo si MQTT confirma el envío.
 void enviarPendiente() {
   if (colaVacia() || !client.connected()) return;
   if (client.publish(topicMediciones(), cola[colaInicio].json, false, 1)) {
@@ -356,6 +374,7 @@ void alRecibirMensaje(String &topic, String &payload) {
 
 unsigned long ultimoIntentoMQTT = 0;
 
+// Reintenta la conexión MQTT con una separación mínima de cinco segundos.
 void reconectarMQTT() {
   if (millis() - ultimoIntentoMQTT < 5000) return;
   ultimoIntentoMQTT = millis();
@@ -372,11 +391,13 @@ void reconectarMQTT() {
 // GENERACION DE DATOS SIMULADOS (igual que antes)
 float energiaAcumulada[MAX_MEDIDORES] = {0.0, 0.0};
 
+// Genera valores aleatorios con tres decimales de precisión.
 float randomFloat(float minimo, float maximo) {
   long valor = random((long)(minimo * 1000), (long)(maximo * 1000));
   return valor / 1000.0;
 }
 
+// Calcula una medición de prueba y acumula su energía aproximada.
 void generarMedicionSimulada(int circuito, float &voltaje, float &corriente,
                               float &potencia, float &energia,
                               float &factorPotencia) {
@@ -390,6 +411,7 @@ void generarMedicionSimulada(int circuito, float &voltaje, float &corriente,
   energia = energiaAcumulada[circuito];
 }
 
+// Construye el paquete JSON con la medición de cada circuito simulado.
 String construirJsonMediciones() {
   DynamicJsonDocument doc(2048);
   const uint64_t timestampPaquete = obtenerTimestampActualMs();
@@ -416,6 +438,7 @@ String construirJsonMediciones() {
 }
 
 // SETUP
+// Inicializa hardware, configuración persistente y cliente MQTT.
 void setup() {
   Serial.begin(115200);
   delay(1000);
@@ -447,6 +470,7 @@ void setup() {
 }
 
 // LOOP
+// Ejecuta el estado actual del dispositivo y sus tareas de comunicación.
 void loop() {
   switch (estadoActual) {
 
@@ -488,6 +512,7 @@ void loop() {
       break;
 
     case OPERACION_NORMAL:
+      // Mantiene WiFi/MQTT, sincroniza la hora y publica o encola mediciones.
       if (WiFi.status() != WL_CONNECTED) {
         wifiEstabaConectado = false;
         relojSincronizado = false;
