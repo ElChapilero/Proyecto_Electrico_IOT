@@ -1,4 +1,6 @@
-const pool = require("../../config/db");
+const pool = require("../../config/db"); // conexiones a PostgreSQL.
+
+// Obtiene los paneles de un predio a los que tiene acceso un usuario.
 async function list(predioId, userId) {
   const r = await pool.query(
     `SELECT p.id, p.id_predio, p.id_panel_principal, p.nombre, p.tipo_panel, p.creado_en FROM paneles_electricos p JOIN accesos_predio a ON a.id_predio = p.id_predio WHERE p.id_predio = $1 AND a.id_usuario = $2 ORDER BY p.creado_en ASC, p.id ASC`,
@@ -6,6 +8,8 @@ async function list(predioId, userId) {
   );
   return r.rows;
 }
+
+// Busca un panel por su identificador.
 async function find(id) {
   const r = await pool.query(
     "SELECT id, id_predio, id_panel_principal, nombre, tipo_panel, creado_en FROM paneles_electricos WHERE id = $1",
@@ -13,6 +17,8 @@ async function find(id) {
   );
   return r.rows[0] || null;
 }
+
+// Inserta un panel nuevo en la base de datos.
 async function create(data) {
   const r = await pool.query(
     "INSERT INTO paneles_electricos (id_predio, id_panel_principal, nombre, tipo_panel) VALUES ($1, $2, $3, $4) RETURNING id, id_predio, id_panel_principal, nombre, tipo_panel, creado_en",
@@ -25,6 +31,8 @@ async function create(data) {
   );
   return r.rows[0];
 }
+
+// Actualiza el nombre de un panel existente.
 async function update(id, nombre) {
   const r = await pool.query(
     "UPDATE paneles_electricos SET nombre = $1 WHERE id = $2 RETURNING id, id_predio, id_panel_principal, nombre, tipo_panel, creado_en",
@@ -32,6 +40,8 @@ async function update(id, nombre) {
   );
   return r.rows[0] || null;
 }
+
+// Elimina un panel de la base de datos.
 async function remove(id) {
   const r = await pool.query(
     "DELETE FROM paneles_electricos WHERE id = $1 RETURNING id",
@@ -39,4 +49,5 @@ async function remove(id) {
   );
   return r.rows[0] || null;
 }
+
 module.exports = { list, find, create, update, remove };
