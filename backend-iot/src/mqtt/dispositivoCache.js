@@ -1,14 +1,9 @@
-// Cache en memoria para relacionar cada ESP32 con su predio y circuitos.
+// Guarda en memoria la relación entre cada ESP32, su predio y sus circuitos.
 
-// mqttListener.js lo usa para evitar consultar la base de datos en cada
-// mensaje MQTT. Está separado para que dispositivos.service.js y
-// circuitos.service.js puedan actualizar o invalidar el cache cuando
-// hagan cambios.
-
-// (Fix bug importante 3.1)
-// El cache se invalida cuando cambia el dispositivo o sus circuitos.
-// Así mqttListener.js no usa información vieja hasta reiniciar el backend.
-const pool = require('../config/db');
+// mqttListener.js usa esta caché para evitar consultas repetidas.
+// Los servicios de dispositivos y circuitos pueden invalidarla al hacer cambios.
+// Así se evita utilizar información desactualizada.
+const pool = require("../config/db");
 
 const cache = new Map();
 
@@ -25,7 +20,7 @@ async function obtenerInfoDispositivo(uuidEsp32) {
     [uuidEsp32],
   );
 
-  if (filas.rows.length === 0) return null; // dispositivo no registrado
+  if (filas.rows.length === 0) return null; // Dispositivo no registrado.
 
   const porIndice = {};
   filas.rows.forEach((fila) => {
@@ -39,10 +34,8 @@ async function obtenerInfoDispositivo(uuidEsp32) {
   return info;
 }
 
-// Invalidar el cache después de confirmar en la BD cualquier cambio que
-// afecte la información del dispositivo: moverlo, borrarlo o agregar/eliminar
-// circuitos. No hace falta al cambiar nombres o el estado del circuito,
-// porque esos datos no se guardan en el cache.
+// Invalida la caché cuando cambian el dispositivo o sus circuitos.
+// No hace falta invalidarla por nombres o estados, porque no se almacenan aquí.
 function invalidar(uuidEsp32) {
   if (uuidEsp32) cache.delete(uuidEsp32);
 }
