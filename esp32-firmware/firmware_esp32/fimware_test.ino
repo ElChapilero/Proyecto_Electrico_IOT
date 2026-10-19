@@ -211,7 +211,7 @@ void iniciarBLE() {
   Serial.println("(Se puede probar con cualquier app generica de BLE, ej. nRF Connect / LightBlue)");
 }
 
-// PORTAL WEB (una vez conectado a WiFi) - DATOS DEL USUARIO
+// Pagina WEB - DATOS DEL USUARIO
 WebServer servidorWeb(80);
 
 const char* PAGINA_HTML =
@@ -448,10 +448,8 @@ void setup() {
   cargarConfiguracion();
 
   Serial.println();
-  Serial.println("=============================================");
   Serial.println("   ESP32 - MONITOREO ENERGETICO IoT");
   Serial.println("   UUID del dispositivo: " + cfgDeviceUuid);
-  Serial.println("=============================================");
 
   net.setCACert(CA_CERT); // valida que el broker sea el tuyo (evita MITM)
   client.begin(MQTT_BROKER_HOST, MQTT_BROKER_PORT, net);

@@ -9,7 +9,7 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
 
-  Serial.println("   BORRADO DE CONFIGURACION DEL ESP32");
+  Serial.println("CONFIGURACION BORRADA DEL ESP32");
 
   // Borra la configuración persistente de la librería WiFi.
   WiFi.mode(WIFI_STA);

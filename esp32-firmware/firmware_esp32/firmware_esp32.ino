@@ -14,8 +14,8 @@
 #include <time.h>
 #include <sys/time.h>
 
-// La configuración local queda en firmware_config.h, ignorado por Git.
-// Copia firmware_config.example.h como firmware_config.h antes de compilar.
+// La configuración local queda en firmware_config.h.
+// Copiar firmware_config.example.h antes de compilar.
 #include "firmware_config.h"
 
 #if PZEM_MEDIDORES_HABILITADOS < 1 || PZEM_MEDIDORES_HABILITADOS > 2
@@ -33,16 +33,16 @@ String cfgWifiPass;
 String cfgDeviceUuid;
 String cfgMqttUser;
 String cfgMqttPass;
-bool   cfgProvisionado = false;
+bool cfgProvisionado = false;
 
 // Recupera de la memoria flash las credenciales y el estado de registro.
 void cargarConfiguracion() {
   prefs.begin("iot_cfg", true);
-  cfgWifiSsid     = prefs.getString("wifi_ssid", "");
-  cfgWifiPass     = prefs.getString("wifi_pass", "");
-  cfgDeviceUuid   = prefs.getString("device_uuid", "");
-  cfgMqttUser     = prefs.getString("mqtt_user", "");
-  cfgMqttPass     = prefs.getString("mqtt_pass", "");
+  cfgWifiSsid = prefs.getString("wifi_ssid", "");
+  cfgWifiPass = prefs.getString("wifi_pass", "");
+  cfgDeviceUuid = prefs.getString("device_uuid", "");
+  cfgMqttUser = prefs.getString("mqtt_user", "");
+  cfgMqttPass = prefs.getString("mqtt_pass", "");
   cfgProvisionado = prefs.getBool("provisionado", false);
   prefs.end();
 }
@@ -103,14 +103,14 @@ const unsigned long TIMEOUT_WIFI_MS = 20000; // Tiempo máximo de cada intento W
 
 bool registroCompletado = false;
 
-// HORA ABSOLUTA DEL DISPOSITIVO
-// COT5 corresponde a Colombia (UTC-05:00, sin horario de verano).
+// HORA DEL DISPOSITIVO
+// COT5 corresponde a Colombia (UTC-05:00).
 const char* ZONA_HORARIA = "COT5";
 const char* SERVIDOR_NTP_1 = "pool.ntp.org";
 const char* SERVIDOR_NTP_2 = "time.nist.gov";
 const char* SERVIDOR_NTP_3 = "time.google.com";
 const time_t EPOCH_MINIMO_VALIDO = 1704067200; // Umbral para distinguir una hora no inicializada.
-const unsigned long INTERVALO_LOG_HORA_MS = 30000;
+const unsigned long INTERVALO_LOG_HORA_MS = 30000; // para el mensaje de hora no sincronizada
 unsigned long ultimoLogHoraNoSincronizada = 0;
 bool relojSincronizado = false;
 bool wifiEstabaConectado = false;
@@ -118,15 +118,15 @@ unsigned long ultimoIntentoReconectarWifi = 0;
 
 // Solicita la hora a los servidores NTP en el orden indicado.
 void iniciarSincronizacionHora() {
-  configTzTime(ZONA_HORARIA, SERVIDOR_NTP_1, SERVIDOR_NTP_2, SERVIDOR_NTP_3);
+  configTzTime(ZONA_HORARIA, SERVIDOR_NTP_1, SERVIDOR_NTP_2, SERVIDOR_NTP_3); //hora mediante NTP
   relojSincronizado = false;
   Serial.println("Sincronizando hora NTP...");
 }
 
 // Considera válida la hora cuando supera el umbral mínimo configurado.
 bool horaSincronizada() {
-  struct timeval ahora;
-  gettimeofday(&ahora, nullptr);
+  struct timeval ahora;// tv_sec: los segundos transcurridos desde el 1 de enero de 1970, tv_usec: los microsegundos.
+  gettimeofday(&ahora, nullptr); //consulta el reloj del sistema y la coloca en "ahora"
   const bool valida = ahora.tv_sec >= EPOCH_MINIMO_VALIDO;
   if (valida && !relojSincronizado) {
     relojSincronizado = true;
@@ -144,8 +144,8 @@ uint64_t obtenerTimestampActualMs() {
 }
 
 // BLUETOOTH (BLE) - RECEPCION DE CREDENCIALES WIFI
-#define SERVICE_UUID    "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define CHAR_WIFI_UUID  "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define CHAR_WIFI_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 #define CHAR_ESTADO_UUID "0972ef8c-7613-4075-ad52-756f33d4da91"
 
 BLECharacteristic* caracteristicaEstado = nullptr;
@@ -235,7 +235,7 @@ const char* PAGINA_HTML =
   "<button type='submit'>Vincular</button>"
   "</form></body></html>";
 
-// Sirve la página que permite introducir el código de vinculación.
+// permite introducir el código de vinculación.
 void manejarRaizWeb() {
   servidorWeb.send(200, "text/html", PAGINA_HTML);
 }
@@ -337,7 +337,7 @@ const unsigned long sendInterval = 5000;
 unsigned long lastSend = 0;
 uint32_t messageId = 0;
 
-const int MAX_COLA = 20; // Paquetes retenidos mientras MQTT no está disponible.
+const int MAX_COLA = 20; // Paquetes guardados mientras MQTT no está disponible.
 struct Paquete { uint32_t id; String json; };
 Paquete cola[MAX_COLA];
 int colaInicio = 0, colaFin = 0, colaCantidad = 0;
@@ -454,7 +454,6 @@ bool construirJsonMediciones(String& salida) {
   return true;
 }
 
-// SETUP
 // Inicializa hardware, configuración persistente y clientes de red.
 void setup() {
   Serial.begin(115200);
@@ -464,10 +463,8 @@ void setup() {
   cargarConfiguracion();
 
   Serial.println();
-  Serial.println("=============================================");
   Serial.println("   ESP32 - MONITOREO ENERGETICO IoT");
   Serial.println("   UUID del dispositivo: " + cfgDeviceUuid);
-  Serial.println("=============================================");
 
   net.setCACert(CA_CERT); // valida que el broker sea el tuyo (evita MITM)
   client.begin(MQTT_BROKER_HOST, MQTT_BROKER_PORT, net);
@@ -485,7 +482,6 @@ void setup() {
   }
 }
 
-// LOOP
 // Ejecuta el estado actual del dispositivo y sus tareas de comunicación.
 void loop() {
   switch (estadoActual) {
