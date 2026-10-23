@@ -1,16 +1,3 @@
-// Valida las lecturas del PZEM-004T antes de guardarlas en PostgreSQL.
-
-// La validación se hace en 4 pasos:
-// 1) Estructura y tipos.
-// 2) Rangos físicos.
-// 3) Consistencia entre voltaje, corriente, potencia y factor de potencia.
-// 4) Comparación con la última lectura válida.
-
-// Los pasos 1, 2 y 3 rechazan lecturas inválidas.
-// El paso 4 solo genera una advertencia en el log.
-
-// Los campos deben coincidir con las columnas de "mediciones"
-// en PostgreSQL (ver db-iot/schema.sql).
 const CAMPOS_REQUERIDOS = [
   'voltaje',
   'corriente',
@@ -19,26 +6,23 @@ const CAMPOS_REQUERIDOS = [
   'factor_potencia',
 ];
 
-// Rangos permitidos para un PZEM-004T en una instalación residencial.
-// Se definen como constantes para facilitar su lectura y ajuste.
-const RANGO_VOLTAJE_MINIMO = 80; // voltios
-const RANGO_VOLTAJE_MAXIMO = 260; // voltios
-const RANGO_CORRIENTE_MINIMO = 0; // amperios
-const RANGO_CORRIENTE_MAXIMO = 100; // amperios (límite del PZEM-004T con shunt de 100A)
-const RANGO_POTENCIA_MINIMO = 0; // vatios
-const RANGO_POTENCIA_MAXIMO = 23000; // vatios (aprox. 100A x 230V)
+const RANGO_VOLTAJE_MINIMO = 80; 
+const RANGO_VOLTAJE_MAXIMO = 260; 
+const RANGO_CORRIENTE_MINIMO = 0; 
+const RANGO_CORRIENTE_MAXIMO = 100; 
+const RANGO_POTENCIA_MINIMO = 0; 
+const RANGO_POTENCIA_MAXIMO = 23000; 
 const RANGO_FACTOR_POTENCIA_MINIMO = 0;
 const RANGO_FACTOR_POTENCIA_MAXIMO = 1;
 
 // Tolerancia para comprobar que potencia ≈ voltaje × corriente × factor de potencia.
-// Se usa un margen porque las lecturas reales del sensor no son exactas.
-const TOLERANCIA_MINIMA_VATIOS = 10; // piso de tolerancia para lecturas muy bajas (cerca de 0 W)
-const TOLERANCIA_PORCENTUAL_CONSISTENCIA = 0.2; // 20% sobre la potencia esperada
 
-// Umbrales para comparar con la lectura anterior.
+const TOLERANCIA_MINIMA_VATIOS = 10; 
+const TOLERANCIA_PORCENTUAL_CONSISTENCIA = 0.2; 
+
 // Solo generan advertencias en el log, no rechazan la lectura.
-const SALTO_VOLTAJE_ADVERTENCIA = 80; // voltios
-const SALTO_POTENCIA_ADVERTENCIA = 15000; // vatios
+const SALTO_VOLTAJE_ADVERTENCIA = 80;
+const SALTO_POTENCIA_ADVERTENCIA = 15000; 
 
 /**
  * Capa 1: valida que estén los 5 campos y que todos sean números válidos.

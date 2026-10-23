@@ -59,9 +59,10 @@ aparezcan en `git status`.
 
 ## Tiempo de las mediciones
 
-`timestamp_ms` del ESP32 representa milisegundos desde que el dispositivo se
-encendió; no es una fecha ni una hora de calendario. El backend captura una
-sola fecha de recepción para todo el JSON y la guarda en todas sus mediciones.
+`timestamp_ms` del ESP32 representa epoch Unix en milisegundos, obtenido con
+`gettimeofday()` después de sincronizar NTP; no es tiempo desde el arranque.
+El backend captura una sola fecha de adquisición para todo el JSON y la guarda
+en todas sus mediciones.
 
 Para mostrar mediciones, ordénalas por la fecha y después por el circuito:
 

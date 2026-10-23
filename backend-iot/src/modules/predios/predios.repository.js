@@ -1,5 +1,6 @@
-const pool = require("../../config/db");
+const pool = require("../../config/db"); // Importa el conjunto de conexiones PostgreSQL
 
+// Obtiener todos los predios a los que tiene acceso un usuario
 async function listForUser(userId) {
   const r = await pool.query(
     `SELECT p.id, p.nombre, p.tipo_predio, p.creado_en, a.rol
@@ -9,6 +10,8 @@ async function listForUser(userId) {
   );
   return r.rows;
 }
+
+// Busca un predio específico al que tenga acceso el usuario
 async function findForUser(id, userId) {
   const r = await pool.query(
     `SELECT p.id, p.nombre, p.tipo_predio, p.creado_en, a.rol
@@ -18,6 +21,8 @@ async function findForUser(id, userId) {
   );
   return r.rows[0] || null;
 }
+
+// Crea un predio y asigna al usuario el rol de administrador
 async function create(userId, { nombre, tipo_predio = "Casa" }) {
   const client = await pool.connect();
   try {
@@ -28,11 +33,15 @@ async function create(userId, { nombre, tipo_predio = "Casa" }) {
         [nombre.trim(), tipo_predio],
       )
     ).rows[0];
+
+    // Relaciona el predio con el usuario y le asigna el rol de administrador
     await client.query(
       "INSERT INTO accesos_predio (id_predio, id_usuario, rol) VALUES ($1, $2, 'administrador')",
       [p.id, userId],
     );
-    await client.query("COMMIT");
+    await client.query("COMMIT"); // Confirma los cambios en la base de datos
+
+    // Devuelve los datos del predio e incluye el rol del usuario
     return { ...p, rol: "administrador" };
   } catch (e) {
     await client.query("ROLLBACK");
@@ -41,6 +50,8 @@ async function create(userId, { nombre, tipo_predio = "Casa" }) {
     client.release();
   }
 }
+
+// Actualiza el nombre o el tipo de un predio
 async function update(id, data) {
   const r = await pool.query(
     `UPDATE predios SET nombre = COALESCE($1, nombre), tipo_predio = COALESCE($2, tipo_predio)
@@ -49,6 +60,8 @@ async function update(id, data) {
   );
   return r.rows[0] || null;
 }
+
+// Elimina un predio por su ID
 async function remove(id) {
   const r = await pool.query("DELETE FROM predios WHERE id = $1 RETURNING id", [
     id,

@@ -1,34 +1,4 @@
-// Red de seguridad para los errores de PostgreSQL que llegan sin haber sido
-// convertidos previamente por un service a un error de aplicación
-// (con .status y .publicMessage).
-
-// (Fix bug importante 4.1) Antes, una violación de una restricción de la
-// base de datos que no se capturara en el service terminaba en
-// errorHandler.js como un 500 genérico, aunque el error permitiera saber
-// que realmente era un 400, 404 o 409.
-
-// Algunos casos que podían ocurrir en este proyecto:
-//   - Cambiar en PATCH /usuarios/me un email que ya está registrado.
-//   - Crear un circuito con un índice que ya existe.
-//   - Enviar un id con formato inválido en un parámetro de la URL.
-
-// En lugar de repetir try/catch en cada service, esta traducción se hace
-// una sola vez acá y se conecta con errorHandler.js. Así, cualquier error
-// de PostgreSQL que podamos reconocer se convierte automáticamente en el
-// error HTTP correspondiente, sin importar desde qué service se produzca.
-
-// Códigos de PostgreSQL usados (ver documentación oficial):
-//   23505 unique_violation             -> 409 (el registro ya existe)
-//   23503 foreign_key_violation        -> 404 (la referencia no existe)
-//   23514 check_violation              -> 400 (el dato no cumple una regla)
-//   22P02 invalid_text_representation  -> 400 (id/UUID con formato inválido)
-//   22007 invalid_datetime_format      -> 400 (fecha from/to inválida)
-
-// Para las restricciones más comunes de la API se definen mensajes
-// específicos. Si una restricción no está contemplada, se usa un mensaje
-// genérico según el tipo de error. El código HTTP se mantiene correcto,
-// aunque el mensaje sea menos detallado.
-
+// Mensajes para errores de datos duplicados
 const MENSAJES_UNIQUE = {
   usuarios_email_key: "Ya existe una cuenta con ese correo",
   uq_acceso_predio_usuario: "Ese usuario ya tiene acceso a este predio",
@@ -40,32 +10,30 @@ const MENSAJES_UNIQUE = {
     "Ya existe una configuración de alerta para esa variable en este circuito",
 };
 
-// Devuelve { status, publicMessage } si "error" es un error de
-// Postgres que sabemos traducir, o null si no lo es (en ese caso,
-// errorHandler.js sigue su camino normal y responde 500).
+// Convertir errores de PostgreSQL en respuestas HTTP
 function mapearErrorPostgres(error) {
-  switch (error.code) {
-    case "23505": // unique_violation
+  switch (error.code) { // revisa el código del error
+    case "23505": // error por dato duplicado
       return {
-        status: 409,
+        status: 409, // indicar conflicto con un dato existente
         publicMessage: MENSAJES_UNIQUE[error.constraint] || "Ese registro ya existe",
       };
-    case "23503": // foreign_key_violation
+    case "23503": // error por clave foránea
       return {
-        status: 404,
+        status: 404, // indicar que el recurso relacionado no existe
         publicMessage: "El recurso relacionado no existe",
       };
-    case "23514": // check_violation
+    case "23514":// error por regla CHECK
       return {
-        status: 400,
+        status: 400, //datos incorrectos
         publicMessage: "Los datos no cumplen las reglas permitidas",
       };
-    case "22P02": // invalid_text_representation (uuid/numero con formato invalido)
+    case "22P02": // error por formato de texto inválido
       return {
         status: 400,
         publicMessage: "Alguno de los identificadores tiene un formato inválido",
       };
-    case "22007": // invalid_datetime_format
+    case "22007": // error por formato de fecha inválido
       return {
         status: 400,
         publicMessage: "Alguna de las fechas tiene un formato inválido",
@@ -75,4 +43,4 @@ function mapearErrorPostgres(error) {
   }
 }
 
-module.exports = { mapearErrorPostgres };
+module.exports = { mapearErrorPostgres }; // permitir usarlo en otros archivos

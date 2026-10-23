@@ -1,5 +1,7 @@
+// Import conexiones a PostgreSQL
 const pool = require("../../config/db");
 
+// Busca un usuario por su identificador
 async function findById(id) {
   const result = await pool.query(
     "SELECT id, email, nombre, created_at FROM usuarios WHERE id = $1",
@@ -8,10 +10,8 @@ async function findById(id) {
   return result.rows[0] || null;
 }
 
+// Busca un usuario por su correo electrónico
 async function findByEmail(email) {
-  // LOWER() en la columna, no solo en el parámetro: así también
-  // encuentra cuentas que hayan quedado guardadas con mayúsculas de
-  // antes de este fix (6.1), sin necesitar una migración de datos.
   const result = await pool.query(
     "SELECT id, email, nombre, password_hash, created_at FROM usuarios WHERE LOWER(email) = LOWER($1)",
     [email],
@@ -19,6 +19,7 @@ async function findByEmail(email) {
   return result.rows[0] || null;
 }
 
+// Crea el usuario, su predio, su acceso y su panel eléctrico
 async function createAccount({ email, nombre, passwordHash }) {
   const client = await pool.connect();
   try {

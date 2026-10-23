@@ -1,17 +1,10 @@
-// (vulnerabilidad crítica 2.3).
-// Ahora:
-//   1) Se exige el mismo JWT usado por la API REST. El token se envía en
-//      auth.token durante el handshake de Socket.IO.
-//   2) El cliente debe solicitar unirse a cada predio que quiera ver. El
-//      backend verifica nuevamente el acceso en accesos_predio y no confía
-//      solo en el predio enviado por el cliente.
-//   3) mqttListener.js ya no usa io.emit() global. Las mediciones se envían
-//      únicamente a la sala correspondiente al predio mediante
-//      realtime.service.js.
+// Verifica el JWT y comprueba el acceso antes de entrar a cada predio.
+// Los eventos se envían solo a la sala del predio correspondiente.
 
-// En el frontend, la conexión usa:
-//   const socket = io(URL, { auth: { token: miJwt } });
-//   socket.emit('unirse-predio', { predioId }, (respuesta) => {...});
+// El frontend envía el token al conectar y solicita entrar al predio:
+// const socket = io(URL, { auth: { token: miJwt } });
+// socket.emit('unirse-predio', { predioId }, (respuesta) => {...});
+
 const jwt = require('jsonwebtoken');
 const { jwtSecret } = require('../config/env');
 const { tieneAcceso } = require('../utils/accesoHelpers');
@@ -22,7 +15,7 @@ module.exports = function configurarSocket(io) {
     if (!token) return next(new Error('Falta token de autenticacion'));
 
     try {
-      socket.usuario = jwt.verify(token, jwtSecret, { algorithms: ['HS256'] }); // { id, email }
+      socket.usuario = jwt.verify(token, jwtSecret, { algorithms: ['HS256'] }); // Datos del usuario: id y email.
       next();
     } catch (err) {
       next(new Error('Token invalido o expirado'));

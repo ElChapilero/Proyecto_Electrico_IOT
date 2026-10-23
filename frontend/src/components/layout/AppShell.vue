@@ -1,198 +1,281 @@
 <template>
   <div class="shell">
-    <a class="skip-link" href="#contenido">Saltar al contenido</a>
-
-    <nav class="shell-nav" aria-label="Secciones">
-      <router-link class="nav-item" to="/dashboard/resumen">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-          <path d="M5 19V13" /><path d="M12 19V7" /><path d="M19 19V15" />
-        </svg>
-        <span>Resumen</span>
-      </router-link>
-      <router-link class="nav-item" to="/dashboard/alertas">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M6 8a6 6 0 0 1 12 0c0 4 1.5 5.5 1.5 5.5H4.5S6 12 6 8Z" /><path d="M9.5 18a2.5 2.5 0 0 0 5 0" />
-        </svg>
-        <span>Alertas</span>
-      </router-link>
-      <router-link class="nav-item" to="/dashboard/historial">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="8" /><path d="M12 8v4l3 2" />
-        </svg>
-        <span>Historial</span>
-      </router-link>
-      <router-link class="nav-item" to="/dashboard/dispositivos">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9 2v4M15 2v4M7 9h10v3a5 5 0 0 1-10 0V9Z" /><path d="M12 17v3" />
-        </svg>
-        <span>Dispositivos</span>
-      </router-link>
-      <router-link class="nav-item" to="/dashboard/configuraciones">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="2.6" />
-          <path d="M12 4v2.4M12 17.6V20M4 12h2.4M17.6 12H20M6.3 6.3l1.7 1.7M16 16l1.7 1.7M17.7 6.3 16 8M8 16l-1.7 1.7" />
-        </svg>
-        <span>Configuraciones</span>
-      </router-link>
-    </nav>
-
-    <div class="shell-main">
-      <header class="shell-topbar">
-        <span class="brand">Vatio</span>
-
-        <button class="icon-btn" @click="salir" aria-label="Cerrar sesión">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <path d="M12 3v8" /><path d="M6.5 6.5a7 7 0 1 0 11 0" />
-          </svg>
-        </button>
+    <a class="skip" href="#main">Saltar al contenido</a>
+    <div class="main">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">◌</span><span>Vatio</span>
+        </div>
+        <nav class="top-nav desktop-only" aria-label="Navegación principal">
+          <router-link
+            v-for="item in navItems"
+            :key="item.path"
+            :to="item.path"
+            >{{ item.label }}</router-link
+          >
+        </nav>
+        <div class="top-actions">
+          <PredioSelector />
+          <div class="user-chip">
+            <span>{{ auth.usuario.value?.nombre || "Usuario" }}</span
+            ><small>{{ predio.predioActual.value?.rol || "—" }}</small>
+          </div>
+          <button class="logout-button" type="button" @click="logout">
+            Cerrar sesión
+          </button>
+        </div>
       </header>
-
-      <main id="contenido" class="shell-content">
-        <router-view />
-      </main>
+      <main id="main" class="page-container"><router-view /></main>
+      <nav class="bottom-nav mobile-only" aria-label="Navegación móvil">
+        <router-link v-for="item in navItems" :key="item.path" :to="item.path"
+          ><span class="nav-icon">{{ item.icon }}</span
+          ><span>{{ item.label }}</span></router-link
+        >
+      </nav>
     </div>
   </div>
 </template>
-
 <script setup>
-import { useRouter } from 'vue-router';
-
+import { onMounted } from "vue";
+import { useRouter } from "vue-router";
+import PredioSelector from "../selectors/PredioSelector.vue";
+import { useAuthStore } from "../../stores/authStore";
+import { usePredioStore } from "../../stores/predioStore";
+import { useRealtimeStore } from "../../stores/realtimeStore";
+const navItems = [
+  { path: "/dashboard/inicio", label: "Inicio", icon: "⌂" },
+  { path: "/dashboard/tiempo-real", label: "Tiempo real", icon: "⌁" },
+  { path: "/dashboard/resumen", label: "Resumen", icon: "◒" },
+  { path: "/dashboard/alertas", label: "Alertas", icon: "!" },
+  { path: "/dashboard/historial", label: "Historial", icon: "◷" },
+  { path: "/dashboard/dispositivos", label: "Dispositivos", icon: "⌗" },
+  { path: "/dashboard/configuracion", label: "Configuración", icon: "⚙" },
+];
 const router = useRouter();
-
-function salir() {
-  localStorage.removeItem('token');
-  router.push('/login');
+const auth = useAuthStore();
+const predio = usePredioStore();
+const realtime = useRealtimeStore();
+onMounted(async () => {
+  try {
+    await predio.load();
+    realtime.connect();
+  } catch {}
+});
+function logout() {
+  predio.clear();
+  realtime.disconnect();
+  auth.logout();
+  router.replace("/login");
 }
 </script>
-
 <style scoped>
-.skip-link {
-  position: absolute;
-  left: -9999px;
-  top: 0;
-  background: var(--surface);
-  padding: 8px 12px;
-  z-index: 100;
-}
-.skip-link:focus { left: 8px; top: 8px; }
-
 .shell {
   min-height: 100dvh;
-  background: var(--paper);
+  background:
+    radial-gradient(
+      circle at 50% -20%,
+      rgba(54, 92, 139, 0.18),
+      transparent 42%
+    ),
+    var(--color-paper);
 }
-
-.shell-main { min-height: 100dvh; display: flex; flex-direction: column; }
-
-.shell-topbar {
+.main {
+  min-width: 0;
+}
+.topbar {
+  min-height: 66px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 22px;
+  padding: 0 max(24px, calc((100% - 1100px) / 2));
+  background: rgba(10, 18, 32, 0.92);
+  border-bottom: 1px solid rgba(88, 121, 160, 0.16);
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: var(--z-nav);
+  backdrop-filter: blur(12px);
+}
+.brand {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
-  padding: var(--space-4) var(--space-4) var(--space-3);
+  gap: 7px;
+  color: #b8d8ff;
+  font: 700 16px var(--font-display);
 }
-
-.brand {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 16px;
-  letter-spacing: 0.02em;
-  color: var(--volt-teal-dark);
+.brand-mark {
+  font-size: 26px;
+  line-height: 0.6;
+  color: #e3efff;
 }
-
-.icon-btn {
-  margin-left: auto;
-  background: none;
-  border: 0;
-  padding: 6px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  color: var(--text-muted);
-  line-height: 0;
-  flex-shrink: 0;
+.top-nav {
+  display: flex;
+  align-items: center;
+  gap: 21px;
+  height: 100%;
+  white-space: nowrap;
 }
-.icon-btn:hover { background: var(--volt-teal-soft); color: var(--volt-teal-dark); }
-.icon-btn svg { width: 20px; height: 20px; }
-
-.shell-content {
-  flex: 1;
-  width: 100%;
-  max-width: 640px;
-  margin: 0 auto;
-  padding: var(--space-5) var(--space-4) calc(88px + env(safe-area-inset-bottom));
+.top-nav a {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  color: #fff;
+  text-decoration: none;
+  font-size: 13px;
 }
-
-.shell-nav {
-  position: fixed;
+.top-nav a:hover,
+.top-nav a.router-link-active {
+  color: #fff;
+}
+.top-nav a.router-link-active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
   left: 0;
   right: 0;
-  bottom: 0;
-  z-index: 20;
-  display: flex;
-  background: var(--surface);
-  border-top: 1px solid var(--line);
-  padding: var(--space-2) var(--space-1) calc(var(--space-2) + env(safe-area-inset-bottom));
+  height: 2px;
+  background: var(--color-primary);
 }
-
-.nav-item {
-  flex: 1;
-  min-width: 0;
+.top-actions {
   display: flex;
-  flex-direction: column;
+  justify-content: flex-end;
   align-items: center;
-  gap: 3px;
-  padding: 6px 2px;
+  gap: 10px;
+}
+.top-actions :deep(.property) {
+  min-width: 150px;
+}
+.user-chip {
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+  text-align: right;
+  color: #f1f6fd;
+}
+.user-chip small {
+  color: #fff;
+  text-transform: capitalize;
+}
+.logout-button {
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 1px solid #45617e;
   border-radius: var(--radius-sm);
-  color: var(--text-muted);
-  text-decoration: none;
-  font-size: 10px;
-  font-weight: 600;
-  text-align: center;
+  background: #1b2d43;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
 }
-.nav-item svg { width: 20px; height: 20px; }
-.nav-item span {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
+.logout-button:hover {
+  background: #294766;
 }
-.nav-item.router-link-active { color: var(--volt-teal-dark); background: var(--volt-teal-soft); }
-
-/* ------------------------------------------------------------
-   Desktop / tablet ancho: la bottom bar se convierte en un rail
-   lateral fijo, y el contenido usa el ancho disponible en vez
-   de quedar angosto como si siguiera siendo un telefono.
-   ------------------------------------------------------------ */
-@media (min-width: 900px) {
-  .shell { display: flex; }
-
-  .shell-nav {
-    position: sticky;
-    top: 0;
-    left: auto;
-    right: auto;
-    bottom: auto;
-    height: 100dvh;
-    width: 116px;
-    flex-shrink: 0;
-    flex-direction: column;
-    justify-content: flex-start;
-    gap: var(--space-2);
-    padding: var(--space-6) var(--space-2);
-    border-top: none;
-    border-right: 1px solid var(--line);
+.skip {
+  position: absolute;
+  left: -999px;
+}
+.skip:focus {
+  left: 12px;
+  top: 12px;
+  z-index: var(--z-modal);
+  background: var(--color-surface);
+  padding: 8px;
+}
+.page-container {
+  padding-top: 32px;
+  padding-bottom: 32px;
+}
+.bottom-nav {
+  display: none;
+}
+@media (max-width: 1050px) and (min-width: 900px) {
+  .top-nav {
+    gap: 12px;
   }
-
-  .nav-item { flex: 0 0 auto; padding: 10px 8px; font-size: 11px; }
-  .nav-item svg { width: 22px; height: 22px; }
-
-  .shell-main { flex: 1; min-width: 0; }
-
-  .shell-topbar { padding: var(--space-5) var(--space-6) var(--space-4); }
-
-  .shell-content { max-width: 880px; padding: var(--space-6) var(--space-6) var(--space-7); }
+  .top-nav a {
+    font-size: 12px;
+  }
+  .user-chip {
+    display: none;
+  }
+}
+@media (max-width: 899px) {
+  .topbar {
+    display: flex;
+    min-height: 62px;
+    padding: 10px 16px;
+  }
+  .brand {
+    margin-right: auto;
+  }
+  .top-actions {
+    gap: 8px;
+  }
+  .user-chip {
+    display: none;
+  }
+  .top-actions :deep(.property) {
+    min-width: 145px;
+  }
+  .logout-button {
+    font-size: 0;
+    width: 34px;
+    padding: 0;
+    position: relative;
+  }
+  .logout-button::after {
+    content: "↪";
+    font-size: 18px;
+  }
+  .page-container {
+    padding: 24px 16px 92px;
+  }
+  .bottom-nav {
+    position: fixed;
+    display: flex;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: var(--z-nav);
+    padding: 7px 5px calc(7px + env(safe-area-inset-bottom));
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    background: rgba(12, 23, 38, 0.97);
+    border-top: 1px solid rgba(113, 173, 255, 0.16);
+    box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.22);
+    backdrop-filter: blur(12px);
+  }
+  .bottom-nav a {
+    display: grid;
+    flex: 0 0 25%;
+    justify-items: center;
+    gap: 3px;
+    min-width: 25%;
+    scroll-snap-align: start;
+    color: #fff;
+    text-decoration: none;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+  }
+  .bottom-nav a.router-link-active {
+    color: var(--color-primary);
+  }
+  .nav-icon {
+    font-size: 17px;
+    line-height: 18px;
+  }
+  .bottom-nav a span:last-child {
+    overflow: hidden;
+    max-width: 100%;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+</style>
+<style>
+html {
+  scrollbar-gutter: stable;
 }
 </style>
