@@ -7,6 +7,7 @@ CREATE TABLE usuarios (
     email TEXT NOT NULL UNIQUE,
     nombre TEXT NOT NULL,
     password_hash TEXT NOT NULL DEFAULT '',
+    password_changed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 

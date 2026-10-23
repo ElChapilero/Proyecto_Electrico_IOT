@@ -18,4 +18,20 @@ async function update(id, { email, nombre }) {
   return r.rows[0] || null;
 }
 
-module.exports = { findById, update };
+async function findPasswordHash(id) {
+  const r = await pool.query(
+    "SELECT email, password_hash FROM usuarios WHERE id = $1",
+    [id],
+  );
+  return r.rows[0] || null;
+}
+
+async function updatePasswordHash(id, passwordHash) {
+  const r = await pool.query(
+    "UPDATE usuarios SET password_hash = $1, password_changed_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id",
+    [passwordHash, id],
+  );
+  return r.rows[0] || null;
+}
+
+module.exports = { findById, update, findPasswordHash, updatePasswordHash };

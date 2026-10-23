@@ -29,7 +29,7 @@ if [ ! -f /certs/ca.key ]; then
 fi
 openssl genrsa -out /certs/server.key 2048
 openssl req -new -key /certs/server.key -subj '/CN=$BrokerIp' -out /tmp/server.csr
-printf 'subjectAltName = IP:$BrokerIp,DNS:localhost,IP:127.0.0.1\n' > /tmp/server.ext
+printf 'subjectAltName = IP:$BrokerIp,DNS:localhost,IP:127.0.0.1\n' > /tmp/server.ext  #direcciones validas del certificado
 openssl x509 -req -in /tmp/server.csr -CA /certs/ca.crt -CAkey /certs/ca.key \
   -CAcreateserial -out /certs/server.crt -days 825 -sha256 -extfile /tmp/server.ext
 rm -f /tmp/server.csr /tmp/server.ext
@@ -48,7 +48,7 @@ $passwdFile = Join-Path $configDir "passwd"
 if (-not (Test-Path $passwdFile)) {
     Write-Host "Creando el usuario MQTT del backend. Escribe la contraseña cuando Mosquitto la solicite."
     Push-Location $brokerRoot
-    try {
+    try { #Crea el archivo de contraseñas
         & docker compose run --rm --no-deps mosquitto mosquitto_passwd -c /mosquitto/config/passwd backend_listener
         if ($LASTEXITCODE -ne 0) { throw "No se pudo crear config/passwd." }
     } finally {

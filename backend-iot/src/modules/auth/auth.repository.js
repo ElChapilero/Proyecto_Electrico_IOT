@@ -19,6 +19,14 @@ async function findByEmail(email) {
   return result.rows[0] || null;
 }
 
+async function findPasswordChangedAt(id) {
+  const result = await pool.query(
+    "SELECT password_changed_at FROM usuarios WHERE id = $1",
+    [id],
+  );
+  return result.rows[0]?.password_changed_at || null;
+}
+
 // Crea el usuario, su predio, su acceso y su panel eléctrico
 async function createAccount({ email, nombre, passwordHash }) {
   const client = await pool.connect();
@@ -51,4 +59,4 @@ async function createAccount({ email, nombre, passwordHash }) {
   }
 }
 
-module.exports = { findById, findByEmail, createAccount };
+module.exports = { findById, findByEmail, findPasswordChangedAt, createAccount };

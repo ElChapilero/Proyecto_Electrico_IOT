@@ -15,4 +15,7 @@ module.exports = {
 
   // Actualiza los datos del usuario
   updateMe: wrap((req) => service.updateMe(req.usuario.id, req.body)),
+
+  // Cambia la contraseña del usuario autenticado
+  changePassword: wrap((req) => service.changePassword(req.usuario.id, req.body)),
 };

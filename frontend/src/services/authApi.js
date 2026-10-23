@@ -6,4 +6,5 @@ export const authApi = {
   me: () => http.get("/auth/me"),
   profile: () => http.get("/usuarios/me"),
   updateProfile: (payload) => http.patch("/usuarios/me", payload),
+  changePassword: (payload) => http.patch("/usuarios/me/password", payload),
 };

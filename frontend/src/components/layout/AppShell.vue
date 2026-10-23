@@ -16,9 +16,33 @@
         </nav>
         <div class="top-actions">
           <PredioSelector />
-          <div class="user-chip">
-            <span>{{ auth.usuario.value?.nombre || "Usuario" }}</span
-            ><small>{{ predio.predioActual.value?.rol || "—" }}</small>
+          <div ref="userMenuRef" class="user-menu">
+            <button
+              class="user-chip"
+              type="button"
+              :aria-expanded="menuOpen"
+              aria-haspopup="menu"
+              @click="menuOpen = !menuOpen"
+            >
+              <span class="user-avatar">{{ userInitial }}</span>
+              <span class="user-details">
+                <strong>{{ auth.usuario.value?.nombre || "Usuario" }}</strong>
+                <small>{{ predio.predioActual.value?.rol || "—" }}</small>
+              </span>
+              <span class="menu-chevron" aria-hidden="true">⌄</span>
+            </button>
+            <div v-if="menuOpen" class="user-dropdown" role="menu">
+              <router-link to="/dashboard/perfil" role="menuitem" @click="closeMenu">
+                <span>◉</span> Mi perfil
+              </router-link>
+              <router-link to="/dashboard/accesos" role="menuitem" @click="closeMenu">
+                <span>♧</span> Accesos y roles
+              </router-link>
+              <div class="menu-divider" />
+              <button type="button" role="menuitem" @click="logout">
+                <span>↪</span> Cerrar sesión
+              </button>
+            </div>
           </div>
           <button class="logout-button" type="button" @click="logout">
             Cerrar sesión
@@ -36,7 +60,7 @@
   </div>
 </template>
 <script setup>
-import { onMounted } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import PredioSelector from "../selectors/PredioSelector.vue";
 import { useAuthStore } from "../../stores/authStore";
@@ -55,13 +79,34 @@ const router = useRouter();
 const auth = useAuthStore();
 const predio = usePredioStore();
 const realtime = useRealtimeStore();
+const menuOpen = ref(false);
+const userMenuRef = ref(null);
+const userInitial = computed(() =>
+  (auth.usuario.value?.nombre || "U").trim().charAt(0).toUpperCase(),
+);
+function closeMenu() {
+  menuOpen.value = false;
+}
+function handleDocumentClick(event) {
+  if (userMenuRef.value && !userMenuRef.value.contains(event.target)) closeMenu();
+}
+function handleEscape(event) {
+  if (event.key === "Escape") closeMenu();
+}
 onMounted(async () => {
   try {
     await predio.load();
     realtime.connect();
   } catch {}
+  document.addEventListener("click", handleDocumentClick);
+  document.addEventListener("keydown", handleEscape);
+});
+onBeforeUnmount(() => {
+  document.removeEventListener("click", handleDocumentClick);
+  document.removeEventListener("keydown", handleEscape);
 });
 function logout() {
+  closeMenu();
   predio.clear();
   realtime.disconnect();
   auth.logout();
@@ -147,15 +192,104 @@ function logout() {
   min-width: 150px;
 }
 .user-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 4px 8px 4px 5px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: #f1f6fd;
+  text-align: left;
+  cursor: pointer;
+}
+.user-chip:hover,
+.user-chip:focus-visible,
+.user-chip[aria-expanded="true"] {
+  border-color: rgba(113, 173, 255, 0.35);
+  background: rgba(113, 173, 255, 0.1);
+}
+.user-avatar {
+  display: grid;
+  place-items: center;
+  width: 29px;
+  height: 29px;
+  flex: 0 0 29px;
+  border-radius: 50%;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 800;
+}
+.user-details {
   display: grid;
   gap: 2px;
   font-size: 12px;
-  text-align: right;
-  color: #f1f6fd;
 }
-.user-chip small {
+.user-details strong {
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.user-details small {
   color: #d2deec;
   text-transform: capitalize;
+}
+.menu-chevron {
+  color: #b8d8ff;
+  font-size: 16px;
+  line-height: 1;
+}
+.user-menu {
+  position: relative;
+}
+.user-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: var(--z-nav);
+  width: 205px;
+  padding: 7px;
+  border: 1px solid rgba(113, 173, 255, 0.22);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.34);
+}
+.user-dropdown a,
+.user-dropdown button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 11px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: #e7f1ff;
+  font-size: 13px;
+  text-decoration: none;
+  text-align: left;
+  cursor: pointer;
+}
+.user-dropdown a:hover,
+.user-dropdown a:focus-visible,
+.user-dropdown button:hover,
+.user-dropdown button:focus-visible {
+  background: var(--color-primary-soft);
+  color: #fff;
+}
+.user-dropdown a span,
+.user-dropdown button span {
+  width: 16px;
+  color: var(--color-primary);
+  text-align: center;
+}
+.menu-divider {
+  height: 1px;
+  margin: 6px 3px;
+  background: var(--color-line);
 }
 .logout-button {
   min-height: 34px;
@@ -196,6 +330,10 @@ function logout() {
     font-size: 12px;
   }
   .user-chip {
+    display: flex;
+    padding-right: 5px;
+  }
+  .user-details {
     display: none;
   }
 }
@@ -211,7 +349,7 @@ function logout() {
   .top-actions {
     gap: 8px;
   }
-  .user-chip {
+  .user-details {
     display: none;
   }
   .top-actions :deep(.property) {
