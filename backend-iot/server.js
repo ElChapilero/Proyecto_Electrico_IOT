@@ -9,6 +9,7 @@ const { iniciarMqttListener } = require("./src/mqtt/mqttListener");// escuchar m
 const configurarSocket = require("./src/realtime/socket"); // configurar Socket.IO
 const server = http.createServer(app); // crear servidor con la aplicación
 const io = new Server(server);// habilitar Socket.IO en el servidor
+app.set('io', io);
 
 // Iniciar comunicaciones
 configurarSocket(io); // configurar conexiones en tiempo real

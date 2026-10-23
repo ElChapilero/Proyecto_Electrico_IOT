@@ -428,7 +428,7 @@ function hideTooltip() {
   outline: none;
 }
 .chart text {
-  fill: #e4edf8;
+  fill: #fff;
   font-family: var(--font-body);
   font-weight: 600;
 }
@@ -473,7 +473,7 @@ function hideTooltip() {
   font-weight: 700;
 }
 .chart-tooltip small {
-  color: #d2deec;
+  color: #fff;
 }
 .chart-empty {
   height: auto;
@@ -483,7 +483,7 @@ function hideTooltip() {
   place-items: center;
   text-align: center;
   padding: 24px;
-  color: #d2deec;
+  color: #fff;
   font-size: 13px;
   border-radius: 7px;
   background:
@@ -500,7 +500,7 @@ function hideTooltip() {
 }
 .explanation {
   margin-top: 18px;
-  color: #d2deec;
+  color: #fff;
   font-size: 13px;
   line-height: 1.5;
 }

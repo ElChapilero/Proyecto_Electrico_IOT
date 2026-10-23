@@ -52,7 +52,7 @@ defineProps({
   margin-top: 6px;
 }
 .charts-heading p {
-  color: #d6e2f0;
+  color: #fff;
   font-size: 13px;
 }
 .charts-grid {

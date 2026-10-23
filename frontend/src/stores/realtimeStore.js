@@ -8,9 +8,11 @@ const state = reactive({
   ultimoEstadoDispositivo: null,
   ultimaAlerta: null,
   error: "",
+  estructuraActualizada: null,
 });
 let socket;
 let joinedId = null;
+const structureListeners = new Set();
 
 function connect() {
   const token = storage.getToken();
@@ -40,6 +42,10 @@ function connect() {
   socket.on("alerta-generada", (payload) => {
     state.ultimaAlerta = payload;
   });
+  socket.on("estructura-actualizada", (payload) => {
+    state.estructuraActualizada = payload;
+    structureListeners.forEach((listener) => listener(payload));
+  });
   socket.connect();
 }
 
@@ -64,6 +70,7 @@ function disconnect() {
   state.ultimaMedicion = null;
   state.ultimoEstadoDispositivo = null;
   state.ultimaAlerta = null;
+  state.estructuraActualizada = null;
 }
 
 export function useRealtimeStore() {
@@ -74,5 +81,7 @@ export function useRealtimeStore() {
     joinProperty,
     leaveProperty,
     disconnect,
+    onStructureChanged: (listener) => structureListeners.add(listener),
+    offStructureChanged: (listener) => structureListeners.delete(listener),
   };
 }

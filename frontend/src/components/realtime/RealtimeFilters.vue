@@ -85,7 +85,7 @@ const timeRanges = [
   border-left: 1px solid rgba(100, 133, 171, 0.2);
 }
 .scope-note span {
-  color: #d6e2f0;
+  color: #fff;
   font-size: 13px;
 }
 .scope-note strong {

@@ -14,4 +14,8 @@ function emitirAlertaGenerada(io, idPredio, alerta) {
   if (io && idPredio && alerta) io.to(`predio:${idPredio}`).emit('alerta-generada', alerta);
 }
 
-module.exports = { emitirMedicionGuardada, emitirEstadoDispositivo, emitirAlertaGenerada };
+function emitirEstructuraActualizada(io, idPredio, payload = {}) {
+  if (io && idPredio) io.to(`predio:${idPredio}`).emit('estructura-actualizada', { predioId: idPredio, ...payload });
+}
+
+module.exports = { emitirMedicionGuardada, emitirEstadoDispositivo, emitirAlertaGenerada, emitirEstructuraActualizada };

@@ -165,7 +165,7 @@ function logout() {
   display: flex;
   align-items: center;
   height: 100%;
-  color: #d2deec;
+  color: #fff;
   text-decoration: none;
   font-size: 13px;
 }
@@ -233,8 +233,11 @@ function logout() {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.user-details small {
-  color: #d2deec;
+
+.user-details small,
+.user-chip small {
+  color: #fff;
+}
   text-transform: capitalize;
 }
 .menu-chevron {
@@ -297,7 +300,7 @@ function logout() {
   border: 1px solid #45617e;
   border-radius: var(--radius-sm);
   background: #1b2d43;
-  color: #e8f1fb;
+  color: #fff;
   font-size: 12px;
   font-weight: 700;
 }
@@ -391,7 +394,7 @@ function logout() {
     gap: 3px;
     min-width: 25%;
     scroll-snap-align: start;
-    color: #d2deec;
+    color: #fff;
     text-decoration: none;
     font-size: 11px;
     font-weight: 600;

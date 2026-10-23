@@ -6,6 +6,7 @@ import InicioView from "../views/InicioView.vue";
 import SectionPlaceholderView from "../views/SectionPlaceholderView.vue";
 import ProfileView from "../views/ProfileView.vue";
 import AccessManagementView from "../views/AccessManagementView.vue";
+import DispositivosView from "../views/DispositivosView.vue";
 import AppShell from "../components/layout/AppShell.vue";
 import { useAuthStore } from "../stores/authStore";
 
@@ -54,12 +55,7 @@ const router = createRouter({
         },
         {
           path: "dispositivos",
-          component: SectionPlaceholderView,
-          props: {
-            title: "Dispositivos",
-            description:
-              "La administración de paneles, ESP32 y circuitos se construirá sobre los endpoints reales.",
-          },
+          component: DispositivosView,
         },
         {
           path: "configuracion",

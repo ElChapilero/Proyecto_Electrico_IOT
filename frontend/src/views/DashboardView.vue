@@ -193,7 +193,7 @@ onUnmounted(() => {
 }
 
 .welcome p {
-  color: #d6e2f0;
+  color: #fff;
   margin-top: 7px;
   font-size: 15px;
 }
@@ -202,7 +202,7 @@ onUnmounted(() => {
   display: grid;
   gap: 6px;
   padding: 22px;
-  color: #d6e2f0;
+  color: #fff;
   font-size: 14px;
 }
 
