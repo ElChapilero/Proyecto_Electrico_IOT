@@ -1,4 +1,5 @@
 const service = require("./circuitos.service");  // Lógica de circuitos
+const { emitirEstructuraActualizada } = require("../../realtime/realtime.service");
 
 // maneja respuestas y errores.
 const wrap = (fn) => async (req, res, next) => {
@@ -36,12 +37,13 @@ module.exports = {
   get: wrap((req) => service.get(req.params.circuitoId, req.usuario.id)),
 
   // Actualiza un circuito.
-  update: wrap((req) =>
-    service.update(req.params.circuitoId, req.usuario.id, req.body),
-  ),
+  update: async (req, res, next) => {
+    try { const result = await service.update(req.params.circuitoId, req.usuario.id, req.body); emitirEstructuraActualizada(req.app.get("io"), result.predioId); res.json(result); } catch (e) { next(e); }
+  },
 
   // Elimina un circuito.
   remove: wrap(async (req) => {
-    await service.remove(req.params.circuitoId, req.usuario.id);
+    const result = await service.remove(req.params.circuitoId, req.usuario.id);
+    emitirEstructuraActualizada(req.app.get("io"), result.predioId);
   }),
 };

@@ -113,7 +113,7 @@ async function update(id, userId, data) {
   const actualizado = await repo.update(id, data);
 
   dispositivoCache.invalidar(d.uuid_esp32);
-  return actualizado;
+  return { ...actualizado, id_predio: d.id_predio };
 }
 
 // Elimina el dispositivo y limpia su caché MQTT.
@@ -126,6 +126,7 @@ async function remove(id, userId) {
   await repo.remove(id);
 
   dispositivoCache.invalidar(d.uuid_esp32);
+  return { id_predio: d.id_predio };
 }
 
 // Genera un código de vinculación durante 10 minutos
@@ -204,6 +205,7 @@ async function register({ uuid_esp32, codigo } = {}) {
       const deviceId = await repo.register(c.id, c.id_panel, uuid_esp32);
       return {
         id: deviceId,
+        id_predio: await predioDePanel(c.id_panel),
         mqtt_username: uuid_esp32,
         mqtt_password: mqttPassword,
         mqtt_broker: host,

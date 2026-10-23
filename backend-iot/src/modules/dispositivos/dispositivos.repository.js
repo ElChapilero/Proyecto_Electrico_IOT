@@ -80,7 +80,7 @@ async function remove(id) {
 // Guarda un código de vinculación
 async function createCode(panelId, code, expiresAt) {
   const r = await pool.query(
-    "INSERT INTO codigos_vinculacion (id_panel, codigo, expira_en) VALUES ($1, $2, $3) RETURNING codigo, expira_en",
+    "INSERT INTO codigos_vinculacion (id_panel, codigo, expira_en) VALUES ($1, $2, $3) RETURNING codigo, creado_en, expira_en, usado",
     [panelId, code, expiresAt],
   );
   return r.rows[0];

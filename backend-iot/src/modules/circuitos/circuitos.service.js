@@ -83,7 +83,8 @@ async function update(id, userId, data) {
   if (data.nombre === undefined && data.estado === undefined)
     throw error(400, "No hay campos válidos para actualizar");
 
-  return repo.update(id, data);
+  const actualizado = await repo.update(id, data);
+  return { ...actualizado, predioId: predio };
 }
 
 // Elimina un circuito y limpia la caché MQTT.
@@ -102,6 +103,7 @@ async function remove(id, userId) {
   await repo.remove(id);
   
   dispositivoCache.invalidar(uuid);
+  return { predioId: predio };
 }
 
 module.exports = { list, get, create, update, remove };

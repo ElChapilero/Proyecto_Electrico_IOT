@@ -98,6 +98,7 @@ async function remove(id, userId) {
   if (!(await esAdministrador(p.id_predio, userId)))
     throw error(403, "Se requiere ser administrador");
   await repo.remove(id);
+  return { id_predio: p.id_predio };
 }
 
 module.exports = { list, get, create, update, remove };

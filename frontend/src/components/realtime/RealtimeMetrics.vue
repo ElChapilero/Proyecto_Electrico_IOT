@@ -33,7 +33,7 @@ defineProps({
   padding: 17px 10px;
 }
 .metric span {
-  color: #e8f1fb;
+  color: #fff;
   font-size: 13px;
   font-weight: 600;
 }
@@ -43,7 +43,7 @@ defineProps({
   overflow-wrap: anywhere;
 }
 .metric small {
-  color: #d6e2f0;
+  color: #fff;
   font-size: 12px;
 }
 @media (max-width: 900px) {

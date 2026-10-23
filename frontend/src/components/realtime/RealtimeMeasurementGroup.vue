@@ -46,7 +46,7 @@ defineProps({
   font-weight: 700;
 }
 .group-state {
-  color: #d6e2f0;
+  color: #fff;
   font-size: 13px;
 }
 @media (max-width: 560px) {
