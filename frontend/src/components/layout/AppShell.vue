@@ -237,7 +237,6 @@ function logout() {
 .user-details small,
 .user-chip small {
   color: #fff;
-}
   text-transform: capitalize;
 }
 .menu-chevron {
