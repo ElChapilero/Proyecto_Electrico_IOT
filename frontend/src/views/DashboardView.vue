@@ -32,7 +32,7 @@
         v-model:selected-panel-id="selectedPanelId"
         v-model:selected-circuit-id="selectedCircuitId"
         v-model:range-minutes="rangeMinutes"
-        :panels="panels"
+        :panels="selectablePanels"
         :can-compare-panels="canComparePanels"
         :circuit-options="circuitOptions"
         :visible-count="visibleRecords.length"
@@ -88,13 +88,17 @@ const {
   chartSeries,
   invalidate,
 } = useRealtimeData(predio.predioId);
-const canComparePanels = computed(
-  () =>
-    panels.value.length > 1 &&
-    panels.value.filter((panel) =>
-      records.value.some((record) => record.panel.id === panel.id),
-    ).length > 1,
+const panelsWithDevices = computed(() =>
+  panels.value.filter((panel) =>
+    records.value.some(
+      (record) => record.panel.id === panel.id && record.device,
+    ),
+  ),
 );
+const selectablePanels = computed(() =>
+  panelsWithDevices.value.length ? panelsWithDevices.value : panels.value,
+);
+const canComparePanels = computed(() => panelsWithDevices.value.length > 1);
 const circuitOptions = computed(() =>
   selectedPanelId.value === "all"
     ? []
@@ -124,10 +128,12 @@ const seriesByMetric = computed(() =>
 );
 let refreshTimer;
 function syncFilters() {
-  const panelIds = new Set(panels.value.map((panel) => String(panel.id)));
+  const panelIds = new Set(
+    selectablePanels.value.map((panel) => String(panel.id)),
+  );
   const selectedPanel = String(selectedPanelId.value);
-  if (panels.value.length === 1 && records.value.length) {
-    selectedPanelId.value = String(panels.value[0].id);
+  if (!canComparePanels.value && selectablePanels.value.length) {
+    selectedPanelId.value = String(selectablePanels.value[0].id);
   } else if (selectedPanel !== "all" && !panelIds.has(selectedPanel)) {
     selectedPanelId.value = "all";
   }

@@ -70,6 +70,10 @@ function logout() {
   clearSession();
 }
 
+function setUsuario(usuario) {
+  state.usuario = usuario;
+}
+
 export function useAuthStore() {
   return {
     state,
@@ -80,6 +84,7 @@ export function useAuthStore() {
     initialize,
     authenticate,
     logout,
+    setUsuario,
     clearSession,
   };
 }

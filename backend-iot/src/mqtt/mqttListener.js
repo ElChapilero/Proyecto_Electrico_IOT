@@ -10,7 +10,7 @@ const { recalcularDespuesDeInsertar } = require('../modules/mediciones/medicione
 const { mqtt: mqttConfig } = require('../config/env');
 const { emitirMedicionGuardada, emitirEstadoDispositivo } = require('../realtime/realtime.service');
 const { obtenerInfoDispositivo } = require('./dispositivoCache');
-
+// Las constantes de configuración MQTT
 const MQTT_TLS = mqttConfig.tls;
 const MQTT_HOST = mqttConfig.host;
 const MQTT_PORT = mqttConfig.port;
@@ -29,7 +29,6 @@ const TOPIC_ESTADO = 'casa/+/estado';
 const cacheUltimaLectura = new Map();
 
 // Evita duplicados MQTT (QoS 1).
-// QoS 1 puede entregar el mismo mensaje más de una vez si no recibe el PUBACK.
 
 // El timestamp_ms y el UUID del ESP32 permiten identificar reenvíos recientes.
 const mensajesRecientes = new Map(); // Clave: UUID del ESP32 + timestamp_ms
@@ -54,7 +53,7 @@ function limpiarMensajesAntiguos() {
     }
   }
 }
-
+//evita procesar dos veces ciertos mensajes MQTT.
 function esMensajeDuplicado(uuidEsp32, timestampDispositivoMs) {
   limpiarMensajesAntiguos();
 
@@ -90,7 +89,7 @@ function iniciarMqttListener(io) {
     opciones.ca = fs.readFileSync(MQTT_CA_FILE); // Verifica el certificado del broker.
   }
 
-  const client = mqtt.connect(`${protocolo}://${MQTT_HOST}:${MQTT_PORT}`, opciones);
+  const client = mqtt.connect(`${protocolo}://${MQTT_HOST}:${MQTT_PORT}`, opciones);//Conectarse al broker
 
   client.on('connect', () => {
     console.log('✅ Backend conectado a Mosquitto');

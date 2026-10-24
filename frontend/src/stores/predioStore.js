@@ -45,6 +45,22 @@ async function select(id) {
   if (state.seleccionadoId) await realtime.joinProperty(state.seleccionadoId);
 }
 
+async function refresh() {
+  try {
+    const list = await prediosApi.list();
+    const nextPredios = Array.isArray(list) ? list : [];
+    if (JSON.stringify(nextPredios) === JSON.stringify(state.predios)) return state.predios;
+    state.predios = nextPredios;
+    if (state.seleccionadoId && !state.predios.some((item) => item.id === state.seleccionadoId)) {
+      await select(state.predios[0]?.id || null);
+    }
+    return state.predios;
+  } catch (error) {
+    state.error = error.message;
+    return state.predios;
+  }
+}
+
 function clear() {
   if (state.seleccionadoId) realtime.leaveProperty(state.seleccionadoId);
   state.predios = [];
@@ -62,6 +78,7 @@ export function usePredioStore() {
     predioId: computed(() => state.seleccionadoId),
     load,
     select,
+    refresh,
     clear,
   };
 }

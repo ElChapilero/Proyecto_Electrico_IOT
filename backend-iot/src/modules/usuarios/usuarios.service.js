@@ -1,6 +1,11 @@
+const bcrypt = require("bcryptjs");
 const repo = require("./usuarios.repository"); // Importa las consultas a la base de datos
 const { normalizarEmail } = require("../auth/auth.service");
-const { MAX_NAME_LENGTH, validateEmail } = require("../auth/auth.validator"); // Importa las reglas de validación
+const {
+  MAX_NAME_LENGTH,
+  validateEmail,
+  validatePasswordStrength,
+} = require("../auth/auth.validator"); // Importa las reglas de validación
 
 // Crea un error con su código HTTP
 const error = (status, message) =>
@@ -46,4 +51,33 @@ async function updateMe(id, data) {
   if (!updated) throw error(404, "Usuario no encontrado");
   return updated;
 }
-module.exports = { getMe, updateMe };
+
+async function changePassword(id, data) {
+  if (!data || typeof data !== "object" || Array.isArray(data))
+    throw error(400, "El body debe ser un objeto");
+
+  const { currentPassword, newPassword } = data;
+  if (typeof currentPassword !== "string" || typeof newPassword !== "string" || !currentPassword || !newPassword)
+    throw error(400, "La contraseña actual y la nueva son obligatorias");
+
+  const passwordResult = validatePasswordStrength(newPassword);
+  if (passwordResult !== true) throw error(400, passwordResult);
+
+  const credentials = await repo.findPasswordHash(id);
+  if (!credentials || !(await bcrypt.compare(currentPassword, credentials.password_hash)))
+    throw error(401, "La contraseña actual no es correcta");
+
+  if (currentPassword === newPassword)
+    throw error(400, "La nueva contraseña debe ser diferente");
+
+  if (newPassword.trim().toLowerCase() === String(credentials.email).trim().toLowerCase())
+    throw error(400, "La contraseña no puede ser igual al email");
+
+  const newHash = await bcrypt.hash(newPassword, 12);
+  const updated = await repo.updatePasswordHash(id, newHash);
+  if (!updated) throw error(404, "Usuario no encontrado");
+
+  return { message: "Contraseña actualizada. Inicia sesión nuevamente" };
+}
+
+module.exports = { getMe, updateMe, changePassword };

@@ -4,6 +4,8 @@ import RegistroView from "../views/RegistroView.vue";
 import DashboardView from "../views/DashboardView.vue";
 import InicioView from "../views/InicioView.vue";
 import SectionPlaceholderView from "../views/SectionPlaceholderView.vue";
+import ProfileView from "../views/ProfileView.vue";
+import AccessManagementView from "../views/AccessManagementView.vue";
 import DispositivosView from "../views/DispositivosView.vue";
 import AppShell from "../components/layout/AppShell.vue";
 import { useAuthStore } from "../stores/authStore";
@@ -21,6 +23,8 @@ const router = createRouter({
       children: [
         { path: "", redirect: "/dashboard/inicio" },
         { path: "inicio", component: InicioView },
+        { path: "perfil", component: ProfileView },
+        { path: "accesos", component: AccessManagementView },
         { path: "tiempo-real", component: DashboardView },
         {
           path: "resumen",
@@ -64,6 +68,8 @@ const router = createRouter({
         },
       ],
     },
+    { path: "/perfil", redirect: "/dashboard/perfil" },
+    { path: "/accesos", redirect: "/dashboard/accesos" },
   ],
 });
 
