@@ -47,4 +47,68 @@ async function comparison(circuitId) {
   return r.rows;
 }
 
-module.exports = { latest, list, consumption, stats, comparison };
+async function dashboard(circuitId, from, to, period) {
+  const bucket = period === "day" ? "hour" : "day";
+  const r = await pool.query(
+    `WITH filtradas AS (
+       SELECT h.*,
+              date_trunc('${bucket}', h.fecha_hora AT TIME ZONE 'America/Bogota') AT TIME ZONE 'America/Bogota' AS periodo
+       FROM mediciones_horarias h
+       WHERE h.circuito_id = $1
+         AND h.fecha_hora >= COALESCE(
+           $2::timestamptz,
+           date_trunc($4, now() AT TIME ZONE 'America/Bogota') AT TIME ZONE 'America/Bogota'
+         )
+         AND h.fecha_hora <= COALESCE($3::timestamptz, now())
+     ), series AS (
+       SELECT periodo,
+         (array_agg(energia_inicial ORDER BY fecha_hora) FILTER (WHERE energia_inicial IS NOT NULL))[1] AS energia_inicial,
+         (array_agg(energia_final ORDER BY fecha_hora DESC) FILTER (WHERE energia_final IS NOT NULL))[1] AS energia_final,
+         CASE WHEN COUNT(consumo_energia) = 0 THEN NULL ELSE COALESCE(SUM(consumo_energia), 0) END AS consumo_energia,
+         COALESCE(bool_or(energia_reset_detectado), FALSE) AS energia_reset_detectado,
+         SUM(cantidad_muestras)::int AS cantidad_muestras,
+         SUM(promedio_potencia * cantidad_muestras) / NULLIF(SUM(cantidad_muestras), 0) AS promedio_potencia,
+         MIN(min_potencia) AS min_potencia, MAX(max_potencia) AS max_potencia,
+         SUM(promedio_voltaje * cantidad_muestras) / NULLIF(SUM(cantidad_muestras), 0) AS promedio_voltaje,
+         MIN(min_voltaje) AS min_voltaje, MAX(max_voltaje) AS max_voltaje,
+         SUM(promedio_corriente * cantidad_muestras) / NULLIF(SUM(cantidad_muestras), 0) AS promedio_corriente,
+         MIN(min_corriente) AS min_corriente, MAX(max_corriente) AS max_corriente,
+         SUM(promedio_factor_potencia * cantidad_muestras) / NULLIF(SUM(cantidad_muestras), 0) AS promedio_factor_potencia,
+         MIN(min_factor_potencia) AS min_factor_potencia, MAX(max_factor_potencia) AS max_factor_potencia,
+         MIN(fecha_hora) AS desde, MAX(fecha_hora) AS hasta
+       FROM filtradas
+       GROUP BY periodo
+     ), resumen AS (
+       SELECT
+         (array_agg(energia_inicial ORDER BY periodo) FILTER (WHERE energia_inicial IS NOT NULL))[1] AS energia_inicial,
+         (array_agg(energia_final ORDER BY periodo DESC) FILTER (WHERE energia_final IS NOT NULL))[1] AS energia_final,
+         CASE WHEN COUNT(consumo_energia) = 0 THEN NULL ELSE COALESCE(SUM(consumo_energia), 0) END AS consumo_acumulado,
+         COALESCE(bool_or(energia_reset_detectado), FALSE) AS energia_reset_detectado,
+         SUM(cantidad_muestras)::int AS cantidad_muestras,
+         SUM(promedio_potencia * cantidad_muestras) / NULLIF(SUM(cantidad_muestras), 0) AS promedio_potencia,
+         MIN(min_potencia) AS min_potencia, MAX(max_potencia) AS max_potencia,
+         SUM(promedio_voltaje * cantidad_muestras) / NULLIF(SUM(cantidad_muestras), 0) AS promedio_voltaje,
+         MIN(min_voltaje) AS min_voltaje, MAX(max_voltaje) AS max_voltaje,
+         SUM(promedio_corriente * cantidad_muestras) / NULLIF(SUM(cantidad_muestras), 0) AS promedio_corriente,
+         MIN(min_corriente) AS min_corriente, MAX(max_corriente) AS max_corriente,
+         SUM(promedio_factor_potencia * cantidad_muestras) / NULLIF(SUM(cantidad_muestras), 0) AS promedio_factor_potencia,
+         MIN(min_factor_potencia) AS min_factor_potencia, MAX(max_factor_potencia) AS max_factor_potencia,
+         MIN(desde) AS desde, MAX(hasta) AS hasta
+       FROM series
+     ), pico AS (
+       SELECT periodo AS periodo_mayor_consumo, consumo_energia AS mayor_consumo
+       FROM series
+       WHERE consumo_energia IS NOT NULL
+       ORDER BY consumo_energia DESC, periodo ASC
+       LIMIT 1
+     )
+     SELECT
+       COALESCE((SELECT json_agg(s ORDER BY s.periodo) FROM series s), '[]'::json) AS series,
+       COALESCE((SELECT row_to_json(x) FROM (SELECT * FROM resumen) x), '{}'::json) AS resumen,
+       COALESCE((SELECT row_to_json(p) FROM pico p), '{"periodo_mayor_consumo":null,"mayor_consumo":null}'::json) AS pico`,
+    [circuitId, from || null, to || null, period],
+  );
+  return r.rows[0];
+}
+
+module.exports = { latest, list, consumption, stats, comparison, dashboard };

@@ -9,4 +9,10 @@ export const tiempoRealApi = {
     http.get(
       `/circuitos/${circuitoId}/mediciones?from=${encodeURIComponent(from)}&limit=1000`,
     ),
+  dashboard: (circuitoId, { period, from, to }) => {
+    const params = new URLSearchParams({ period });
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    return http.get(`/circuitos/${circuitoId}/analitica/dashboard?${params}`);
+  },
 };

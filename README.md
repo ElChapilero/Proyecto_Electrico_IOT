@@ -99,6 +99,7 @@ Bearer <JWT>`.
 | GET/PATCH/DELETE | `/circuitos/:circuitoId` | Acceso/administrador | PATCH: `nombre`, `estado` | 200/204, 400, 403, 404 |
 | GET | `/circuitos/:circuitoId/mediciones/actual` | Acceso al predio | — | 200, 403, 404 |
 | GET | `/circuitos/:circuitoId/mediciones` | Acceso al predio | `limit`, `from`, `to` | 200, 400, 403, 404 |
+| GET | `/circuitos/:circuitoId/analitica/dashboard` | Acceso al predio | `period=day|week|month`, `from`, `to` | 200, 400, 403, 404 |
 | GET | `/circuitos/:circuitoId/consumo` | Acceso al predio | `from`, `to`, `group` | 200, 400, 403, 404 |
 | GET | `/circuitos/:circuitoId/estadisticas` | Acceso al predio | `from`, `to` | 200, 400, 403, 404 |
 | GET | `/circuitos/:circuitoId/comparaciones/semana-anterior` | Acceso al predio | — | 200, 403, 404 |
