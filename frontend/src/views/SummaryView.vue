@@ -12,12 +12,12 @@
         <BaseSelect label="Panel" v-model="selectedPanelId"><option v-for="panel in panels" :key="panel.id" :value="panel.id">{{ panel.nombre }}</option></BaseSelect>
         <BaseSelect label="Circuito" v-model="selectedCircuitId"><option v-for="record in filteredRecords" :key="record.circuit.id" :value="record.circuit.id">{{ record.circuit.nombre }}</option></BaseSelect>
         <BaseSelect label="Periodo" v-model="period"><option value="day">Día · 24 horas</option><option value="week">Semana · 7 días</option><option value="month">Mes · todos los días</option></BaseSelect>
-        <label v-if="period === 'day'" class="field"><span>Día</span><input v-model="selectedDay" type="date" /></label>
-        <label v-else-if="period === 'week'" class="field"><span>Semana</span><input v-model="selectedWeek" type="week" /></label>
-        <label v-else class="field"><span>Mes</span><input v-model="selectedMonth" type="month" /></label>
+        <label v-if="period === 'day'" class="field"><span>Día</span><input v-model="selectedDay" type="date" @keydown.stop /></label>
+        <label v-else-if="period === 'week'" class="field"><span>Semana</span><input v-model="selectedWeek" type="week" @keydown.stop /></label>
+        <label v-else class="field"><span>Mes</span><input v-model="selectedMonth" type="month" @keydown.stop /></label>
         <div class="scope-note"><span>Circuito analizado</span><strong>{{ selectedRecord?.circuit.nombre || "—" }}</strong></div>
       </section>
-      <section v-if="loadingDashboard" class="page-card loading-panel"><LoadingState message="Actualizando indicadores…" /></section>
+      <section v-if="loadingDashboard && !dashboard" class="page-card loading-panel"><LoadingState message="Cargando indicadores…" /></section>
       <ErrorState v-else-if="dashboardError" :message="dashboardError" retry @retry="loadDashboard" />
       <template v-else-if="dashboard">
         <section class="metric-sections">
@@ -33,7 +33,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import BaseSelect from "../components/common/BaseSelect.vue";
 import EmptyState from "../components/common/EmptyState.vue";
 import ErrorState from "../components/common/ErrorState.vue";
@@ -46,6 +46,8 @@ const predio = usePredioStore();
 const panels = ref([]); const records = ref([]); const dashboard = ref(null);
 const selectedPanelId = ref(""); const selectedCircuitId = ref(""); const period = ref("day");
 const selectedDay = ref(""); const selectedWeek = ref(""); const selectedMonth = ref(""); const loading = ref(false); const loadingDashboard = ref(false); const loadError = ref(""); const dashboardError = ref("");
+const SUMMARY_REFRESH_MS = 2 * 60 * 1000;
+let refreshTimer;
 const periodInfo = { day: "Día", week: "Semana", month: "Mes" };
 const filteredRecords = computed(() => records.value.filter((record) => String(record.panel.id) === String(selectedPanelId.value)));
 const selectedRecord = computed(() => records.value.find((record) => String(record.circuit.id) === String(selectedCircuitId.value)));
@@ -72,18 +74,20 @@ function weekRange(value) { const match = /^(\d{4})-W(\d{2})$/.exec(value || "")
 function monthRange(value) { const match = /^(\d{4})-(\d{2})$/.exec(value || ""); if (!match) return { from: null, to: null }; const year = Number(match[1]); const month = Number(match[2]); const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate(); return { from: `${year}-${match[2]}-01`, to: `${year}-${match[2]}-${String(lastDay).padStart(2, "0")}` }; }
 function selectedRange() { if (period.value === "day") return { from: isoStart(selectedDay.value), to: isoEnd(selectedDay.value) }; if (period.value === "week") { const range = weekRange(selectedWeek.value); return { from: isoStart(range.from), to: isoEnd(range.to) }; } const range = monthRange(selectedMonth.value); return { from: isoStart(range.from), to: isoEnd(range.to) }; }
 async function loadStructure() { if (!predio.predioId.value) return; loading.value = true; loadError.value = ""; try { panels.value = await tiempoRealApi.listarPaneles(predio.predioId.value); const built = []; for (const panel of panels.value || []) { const devices = await tiempoRealApi.listarDispositivos(panel.id); for (const device of devices || []) { const circuits = await tiempoRealApi.listarCircuitos(device.id); for (const circuit of circuits || []) built.push({ panel, device, circuit }); } } records.value = built; if (built.length) { selectedPanelId.value = String(built[0].panel.id); selectedCircuitId.value = String(built[0].circuit.id); } } catch { loadError.value = "No se pudo cargar la estructura del predio."; } finally { loading.value = false; } }
-async function loadDashboard() { if (!selectedCircuitId.value) return; loadingDashboard.value = true; dashboardError.value = ""; try { const range = selectedRange(); dashboard.value = await tiempoRealApi.dashboard(selectedCircuitId.value, { period: period.value, ...range }); } catch { dashboardError.value = "No se pudo cargar el resumen histórico."; } finally { loadingDashboard.value = false; } }
+async function loadDashboard({ silent = false } = {}) { if (!selectedCircuitId.value) return; if (!silent) loadingDashboard.value = true; if (!silent) dashboardError.value = ""; try { const range = selectedRange(); dashboard.value = await tiempoRealApi.dashboard(selectedCircuitId.value, { period: period.value, ...range }); dashboardError.value = ""; } catch { if (!silent) dashboardError.value = "No se pudo cargar el resumen histórico."; } finally { if (!silent) loadingDashboard.value = false; } }
+function refreshDashboard() { if (!loadingDashboard.value) loadDashboard({ silent: true }); }
 async function loadAll() { await loadStructure(); await loadDashboard(); }
 watch(selectedPanelId, () => { const first = filteredRecords.value[0]; if (first) selectedCircuitId.value = String(first.circuit.id); });
 watch([selectedCircuitId, period, selectedDay, selectedWeek, selectedMonth], loadDashboard);
 watch(period, setPeriodDates);
 watch(() => predio.predioId.value, loadAll);
-onMounted(() => { setPeriodDates(period.value); loadAll(); });
+onMounted(() => { setPeriodDates(period.value); loadAll(); refreshTimer = setInterval(refreshDashboard, SUMMARY_REFRESH_MS); });
+onBeforeUnmount(() => clearInterval(refreshTimer));
 </script>
 
 <style scoped>
 .summary-view { display: grid; gap: 20px; min-width: 0; }.welcome { display: flex; align-items: flex-start; }.eyebrow { color: var(--color-primary); font-size: 11px; text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }.welcome h2 { color: #eaf3ff; font-size: 30px; margin-top: 7px; }.welcome p { color: #fff; margin-top: 7px; font-size: 15px; }
-.filters { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; padding: 18px; }.scope-note { display: grid; align-content: center; gap: 6px; padding: 0 14px; border-left: 1px solid rgba(100,133,171,.2); color: #fff; }.scope-note span { font-size: 13px; }.scope-note strong { font-size: 15px; }.loading-panel { padding: 10px; }.metric-sections { display: grid; gap: 28px; }.metric-block { display: grid; gap: 14px; }.section-heading h3 { color: #e6f0fc; font-size: 21px; margin-top: 6px; }.cards-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }.metric-card { min-height: 108px; padding: 17px 18px; display: grid; align-content: center; gap: 5px; border-top: 3px solid var(--metric-accent); }.metric-card span { color: #fff; font-size: 13px; }.metric-card strong { color: #fff; font-size: 25px; line-height: 1.1; }.metric-card small { color: #fff; font-size: 12px; }
-@media (max-width: 1100px) { .filters { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(180px, 1.15fr); gap: 14px; padding: 18px; }.scope-note { display: grid; align-content: center; gap: 6px; min-width: 0; padding: 0 14px; border-left: 1px solid rgba(100,133,171,.2); color: #fff; }.scope-note span { font-size: 13px; }.scope-note strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }.loading-panel { padding: 10px; }.metric-sections { display: grid; gap: 28px; }.metric-block { display: grid; gap: 14px; }.section-heading h3 { color: #e6f0fc; font-size: 21px; margin-top: 6px; }.cards-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }.metric-card { min-height: 108px; padding: 17px 18px; display: grid; align-content: center; gap: 5px; border-top: 3px solid var(--metric-accent); }.metric-card span { color: #fff; font-size: 13px; }.metric-card strong { color: #fff; font-size: 25px; line-height: 1.1; }.metric-card small { color: #fff; font-size: 12px; }
+@media (max-width: 1100px) { .filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }.scope-note { grid-column: 1 / -1; border-left: 0; border-top: 1px solid rgba(100,133,171,.2); padding: 12px 0 0; } }
 @media (max-width: 650px) { .filters, .cards-row { grid-template-columns: 1fr; }.scope-note { border-left: 0; border-top: 1px solid rgba(100,133,171,.2); padding: 12px 0 0; } }
 </style>

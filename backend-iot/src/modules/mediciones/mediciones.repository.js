@@ -64,7 +64,7 @@ async function dashboard(circuitId, from, to, period) {
        SELECT periodo,
          (array_agg(energia_inicial ORDER BY fecha_hora) FILTER (WHERE energia_inicial IS NOT NULL))[1] AS energia_inicial,
          (array_agg(energia_final ORDER BY fecha_hora DESC) FILTER (WHERE energia_final IS NOT NULL))[1] AS energia_final,
-         CASE WHEN bool_or(energia_reset_detectado) THEN NULL ELSE COALESCE(SUM(consumo_energia), 0) END AS consumo_energia,
+         CASE WHEN COUNT(consumo_energia) = 0 THEN NULL ELSE COALESCE(SUM(consumo_energia), 0) END AS consumo_energia,
          COALESCE(bool_or(energia_reset_detectado), FALSE) AS energia_reset_detectado,
          SUM(cantidad_muestras)::int AS cantidad_muestras,
          SUM(promedio_potencia * cantidad_muestras) / NULLIF(SUM(cantidad_muestras), 0) AS promedio_potencia,
@@ -82,7 +82,7 @@ async function dashboard(circuitId, from, to, period) {
        SELECT
          (array_agg(energia_inicial ORDER BY periodo) FILTER (WHERE energia_inicial IS NOT NULL))[1] AS energia_inicial,
          (array_agg(energia_final ORDER BY periodo DESC) FILTER (WHERE energia_final IS NOT NULL))[1] AS energia_final,
-         CASE WHEN bool_or(energia_reset_detectado) THEN NULL ELSE COALESCE(SUM(consumo_energia), 0) END AS consumo_acumulado,
+         CASE WHEN COUNT(consumo_energia) = 0 THEN NULL ELSE COALESCE(SUM(consumo_energia), 0) END AS consumo_acumulado,
          COALESCE(bool_or(energia_reset_detectado), FALSE) AS energia_reset_detectado,
          SUM(cantidad_muestras)::int AS cantidad_muestras,
          SUM(promedio_potencia * cantidad_muestras) / NULLIF(SUM(cantidad_muestras), 0) AS promedio_potencia,
