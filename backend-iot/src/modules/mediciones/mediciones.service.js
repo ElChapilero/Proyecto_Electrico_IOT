@@ -48,4 +48,26 @@ async function comparaciones(id, userId) {
   await authorize(id, userId);
   return repo.comparison(id);
 }
-module.exports = { actual, list, consumo, estadisticas, comparaciones };
+function validarPeriodo(period) {
+  if (period !== undefined && !["day", "week", "month"].includes(period))
+    throw error(400, "period debe ser day, week o month");
+  return period || "day";
+}
+async function dashboardData(id, userId, query = {}) {
+  await authorize(id, userId);
+  validarRangoFechas(query);
+  const period = validarPeriodo(query.period);
+  const result = await repo.dashboard(id, query.from, query.to, period);
+  return {
+    summary: { ...result.resumen, ...result.pico },
+    series: result.series,
+    meta: {
+      timezone: "America/Bogota",
+      source: "mediciones_horarias",
+      period,
+      from: query.from || null,
+      to: query.to || null,
+    },
+  };
+}
+module.exports = { actual, list, consumo, estadisticas, comparaciones, dashboardData };

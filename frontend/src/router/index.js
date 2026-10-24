@@ -7,6 +7,7 @@ import SectionPlaceholderView from "../views/SectionPlaceholderView.vue";
 import ProfileView from "../views/ProfileView.vue";
 import AccessManagementView from "../views/AccessManagementView.vue";
 import DispositivosView from "../views/DispositivosView.vue";
+import SummaryView from "../views/SummaryView.vue";
 import AppShell from "../components/layout/AppShell.vue";
 import { useAuthStore } from "../stores/authStore";
 
@@ -28,12 +29,7 @@ const router = createRouter({
         { path: "tiempo-real", component: DashboardView },
         {
           path: "resumen",
-          component: SectionPlaceholderView,
-          props: {
-            title: "Resumen",
-            description:
-              "Aquí se incorporarán los indicadores históricos y comparativos del predio.",
-          },
+          component: SummaryView,
         },
         {
           path: "alertas",

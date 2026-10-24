@@ -11,4 +11,7 @@ module.exports = {
   list: wrap((req) =>
     service.list(req.params.circuitoId, req.usuario.id, req.query),
   ),
+  dashboard: wrap((req) =>
+    service.dashboardData(req.params.circuitoId, req.usuario.id, req.query),
+  ),
 };
