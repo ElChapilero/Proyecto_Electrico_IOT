@@ -36,7 +36,7 @@
       </option></BaseSelect
     >
     <div class="scope-note">
-      <span>Contexto activo</span
+      <span>Circuitos Seleccionados</span
       ><strong
         >{{ visibleCount }}
         {{ visibleCount === 1 ? "circuito" : "circuitos" }}</strong
