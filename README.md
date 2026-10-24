@@ -102,7 +102,6 @@ Bearer <JWT>`.
 | GET | `/circuitos/:circuitoId/analitica/dashboard` | Acceso al predio | `period=day|week|month`, `from`, `to` | 200, 400, 403, 404 |
 | GET | `/circuitos/:circuitoId/consumo` | Acceso al predio | `from`, `to`, `group` | 200, 400, 403, 404 |
 | GET | `/circuitos/:circuitoId/estadisticas` | Acceso al predio | `from`, `to` | 200, 400, 403, 404 |
-| GET | `/circuitos/:circuitoId/comparaciones/semana-anterior` | Acceso al predio | — | 200, 403, 404 |
 | GET | `/alertas` | Acceso derivado del recurso | — | 200, 401 |
 | GET/POST | `/predios/:predioId/configuracion-alertas` | Acceso/administrador | Configuración de alerta | 200/201, 400, 403, 404, 409 |
 | PATCH/DELETE | `/configuracion-alertas/:configuracionId` | Administrador del predio | PATCH: campos de configuración | 200/204, 400, 403, 404 |
@@ -124,9 +123,15 @@ GET /api/v1/predios/:predioId/analitica/daily
 GET /api/v1/predios/:predioId/analitica/weekly
 GET /api/v1/predios/:predioId/analitica/monthly
 GET /api/v1/predios/:predioId/analitica/history
-GET /api/v1/predios/:predioId/analitica/comparison
 GET /api/v1/predios/:predioId/analitica/statistics
+GET /api/v1/predios/:predioId/analitica/paneles/comparacion
+GET /api/v1/predios/:predioId/analitica/circuitos/comparacion
 ```
+
+Las rutas de comparación aceptan `from`, `to`, `period=day|week|month` y los
+filtros `circuitId`, `deviceId` y `panelId`. Devuelven una fila por panel o
+circuito, incluyendo consumo total del rango, porcentaje de participación y
+promedios de potencia, voltaje, corriente y factor de potencia.
 
 Aceptan filtros combinables como `from`, `to`, `circuitId`, `deviceId`,
 `panelId`, `variables`, `granularity` y `limit`. Las respuestas usan

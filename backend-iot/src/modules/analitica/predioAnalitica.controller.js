@@ -23,9 +23,6 @@ module.exports = {
   history: wrap((req) =>
     service.history(req.params.predioId, req.usuario.id, req.query),
   ),
-  comparison: wrap((req) =>
-    service.comparison(req.params.predioId, req.usuario.id, req.query),
-  ),
   statistics: wrap((req) =>
     service.statistics(req.params.predioId, req.usuario.id, req.query),
   ),
@@ -34,15 +31,5 @@ module.exports = {
   ),
   compareCircuits: wrap((req) =>
     service.compareCircuits(req.params.predioId, req.usuario.id, req.query),
-  ),
-  highestConsumption: wrap((req) =>
-    service.highestConsumption(req.params.predioId, req.usuario.id, req.query),
-  ),
-  wholeHomeConsumption: wrap((req) =>
-    service.wholeHomeConsumption(
-      req.params.predioId,
-      req.usuario.id,
-      req.query,
-    ),
   ),
 };

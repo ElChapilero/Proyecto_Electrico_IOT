@@ -41,11 +41,6 @@ router.get(
   controller.history,
 );
 router.get(
-  "/predios/:predioId/analitica/comparison",
-  validarUuidParam("predioId"),
-  controller.comparison,
-);
-router.get(
   "/predios/:predioId/analitica/statistics",
   validarUuidParam("predioId"),
   controller.statistics,
@@ -59,16 +54,6 @@ router.get(
   "/predios/:predioId/analitica/circuitos/comparacion",
   validarUuidParam("predioId"),
   controller.compareCircuits,
-);
-router.get(
-  "/predios/:predioId/analitica/mayor-consumo",
-  validarUuidParam("predioId"),
-  controller.highestConsumption,
-);
-router.get(
-  "/predios/:predioId/analitica/consumo-acumulado",
-  validarUuidParam("predioId"),
-  controller.wholeHomeConsumption,
 );
 
 module.exports = router;

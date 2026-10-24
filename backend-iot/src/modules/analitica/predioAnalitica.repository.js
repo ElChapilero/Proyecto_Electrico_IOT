@@ -75,8 +75,10 @@ function rawAggregatePeriod(period) {
       MIN(created_at) AS primera_lectura_at, MAX(created_at) AS ultima_lectura_at,
       (array_agg(energia ORDER BY created_at, id) FILTER (WHERE energia IS NOT NULL))[1] AS energia_inicial,
       (array_agg(energia ORDER BY created_at DESC, id DESC) FILTER (WHERE energia IS NOT NULL))[1] AS energia_final,
-      CASE WHEN bool_or(energia < energia_anterior) THEN NULL
-           ELSE (MAX(energia) - MIN(energia)) END AS consumo_energia,
+      SUM(CASE
+            WHEN energia IS NULL OR energia_anterior IS NULL OR energia < energia_anterior THEN 0
+            ELSE energia - energia_anterior
+          END) AS consumo_energia,
       COALESCE(bool_or(energia < energia_anterior), FALSE) AS energia_reset_detectado
     FROM base
     GROUP BY circuito_id, circuito, dispositivo_id, panel_id, periodo
@@ -135,44 +137,42 @@ function resumenMediciones(filters, from, to, period) {
   const toPosition = scope.params.length + 2;
   const periodPosition = scope.params.length + 3;
   const where = `${scope.where}
-       AND m.created_at >= COALESCE($${fromPosition}::timestamptz,
+       AND h.fecha_hora >= COALESCE($${fromPosition}::timestamptz,
          date_trunc($${periodPosition}, now() AT TIME ZONE 'America/Bogota') AT TIME ZONE 'America/Bogota')
-       AND m.created_at <= COALESCE($${toPosition}::timestamptz, now())`;
+       AND h.fecha_hora <= COALESCE($${toPosition}::timestamptz, now())`;
 
   return {
     params: [...scope.params, from || null, to || null, period],
     sql: `
-      WITH ordenadas AS (
-        SELECT m.circuito_id, c.indice AS circuito, d.id AS dispositivo_id,
-          p.id AS panel_id, p.nombre AS panel_nombre,
-          m.potencia, m.energia, m.voltaje, m.corriente, m.factor_potencia,
-          m.created_at,
-          LAG(m.energia) OVER (
-            PARTITION BY m.circuito_id ORDER BY m.created_at, m.id
-          ) AS energia_anterior
-        FROM mediciones m
-        JOIN circuitos c ON c.id = m.circuito_id
+      WITH filtradas AS (
+        SELECT h.*, c.indice AS circuito, c.nombre AS circuito_nombre, d.id AS dispositivo_id,
+          p.id AS panel_id, p.nombre AS panel_nombre
+        FROM mediciones_horarias h
+        JOIN circuitos c ON c.id = h.circuito_id
         ${SCOPE_JOINS}
         WHERE ${where}
       ), resumen_circuitos AS (
-        SELECT circuito_id, circuito, dispositivo_id, panel_id, panel_nombre,
-          CASE WHEN bool_or(energia < energia_anterior) THEN NULL
-               ELSE GREATEST(MAX(energia) - MIN(energia), 0) END AS consumo_energia,
-          AVG(potencia) AS promedio_potencia,
-          AVG(voltaje) AS promedio_voltaje,
-          AVG(corriente) AS promedio_corriente,
-          AVG(factor_potencia) AS promedio_factor_potencia,
-          COUNT(*)::int AS cantidad_muestras,
-          MIN(created_at) AS desde, MAX(created_at) AS hasta
-        FROM ordenadas
-        GROUP BY circuito_id, circuito, dispositivo_id, panel_id, panel_nombre
+        SELECT circuito_id, circuito, circuito_nombre, dispositivo_id, panel_id, panel_nombre,
+          CASE WHEN COUNT(consumo_energia) = 0 THEN NULL ELSE COALESCE(SUM(consumo_energia), 0) END AS consumo_energia,
+          SUM(promedio_potencia * cantidad_muestras) / NULLIF(SUM(cantidad_muestras), 0) AS promedio_potencia,
+          SUM(promedio_voltaje * cantidad_muestras) / NULLIF(SUM(cantidad_muestras), 0) AS promedio_voltaje,
+          SUM(promedio_corriente * cantidad_muestras) / NULLIF(SUM(cantidad_muestras), 0) AS promedio_corriente,
+          SUM(promedio_factor_potencia * cantidad_muestras) / NULLIF(SUM(cantidad_muestras), 0) AS promedio_factor_potencia,
+          SUM(cantidad_muestras)::int AS cantidad_muestras,
+          MIN(fecha_hora) AS desde, MAX(fecha_hora) AS hasta
+        FROM filtradas
+        GROUP BY circuito_id, circuito, circuito_nombre, dispositivo_id, panel_id, panel_nombre
       ), resumen_paneles AS (
         SELECT panel_id, panel_nombre,
-          SUM(COALESCE(consumo_energia, 0)) AS consumo_energia,
-          SUM(promedio_potencia) AS promedio_potencia,
-          AVG(promedio_voltaje) AS promedio_voltaje,
-          AVG(promedio_corriente) AS promedio_corriente,
-          AVG(promedio_factor_potencia) AS promedio_factor_potencia,
+          COALESCE(SUM(consumo_energia), 0) AS consumo_energia,
+          SUM(promedio_potencia * cantidad_muestras) /
+            NULLIF(SUM(cantidad_muestras), 0) AS promedio_potencia,
+          SUM(promedio_voltaje * cantidad_muestras) /
+            NULLIF(SUM(cantidad_muestras), 0) AS promedio_voltaje,
+          SUM(promedio_corriente * cantidad_muestras) /
+            NULLIF(SUM(cantidad_muestras), 0) AS promedio_corriente,
+          SUM(promedio_factor_potencia * cantidad_muestras) /
+            NULLIF(SUM(cantidad_muestras), 0) AS promedio_factor_potencia,
           SUM(cantidad_muestras)::int AS cantidad_muestras,
           MIN(desde) AS desde, MAX(hasta) AS hasta
         FROM resumen_circuitos
@@ -185,10 +185,20 @@ async function comparePanels(filters, from, to, period) {
   const resumen = resumenMediciones(filters, from, to, period);
   const r = await pool.query(
     `${resumen.sql}
-      SELECT panel_id, panel_nombre, consumo_energia, promedio_potencia,
+      , comparacion AS (
+        SELECT panel_id, panel_nombre, consumo_energia, promedio_potencia,
+          promedio_voltaje, promedio_corriente, promedio_factor_potencia,
+          cantidad_muestras, desde, hasta,
+          SUM(consumo_energia) OVER () AS consumo_total
+        FROM resumen_paneles
+      )
+      SELECT panel_id, panel_nombre, consumo_energia, consumo_total,
+        CASE WHEN consumo_total > 0
+          THEN consumo_energia * 100 / consumo_total ELSE 0 END AS porcentaje_consumo,
+        promedio_potencia,
         promedio_voltaje, promedio_corriente, promedio_factor_potencia,
         cantidad_muestras, desde, hasta
-      FROM resumen_paneles
+      FROM comparacion
       ORDER BY panel_nombre NULLS LAST, panel_id`,
     resumen.params,
   );
@@ -199,60 +209,26 @@ async function compareCircuits(filters, from, to, period) {
   const resumen = resumenMediciones(filters, from, to, period);
   const r = await pool.query(
     `${resumen.sql}
-      SELECT circuito_id, circuito, dispositivo_id, panel_id, panel_nombre,
-        consumo_energia, promedio_potencia, promedio_voltaje,
+      , comparacion AS (
+        SELECT circuito_id, circuito, circuito_nombre, dispositivo_id, panel_id, panel_nombre,
+          consumo_energia, promedio_potencia, promedio_voltaje,
+          promedio_corriente, promedio_factor_potencia, cantidad_muestras,
+          desde, hasta,
+          SUM(consumo_energia) OVER () AS consumo_total
+        FROM resumen_circuitos
+      )
+      SELECT circuito_id, circuito, circuito_nombre, dispositivo_id, panel_id, panel_nombre,
+        consumo_energia, consumo_total,
+        CASE WHEN consumo_total > 0
+          THEN consumo_energia * 100 / consumo_total ELSE 0 END AS porcentaje_consumo,
+        promedio_potencia, promedio_voltaje,
         promedio_corriente, promedio_factor_potencia, cantidad_muestras,
         desde, hasta
-      FROM resumen_circuitos
+      FROM comparacion
       ORDER BY panel_nombre NULLS LAST, circuito ASC, circuito_id`,
     resumen.params,
   );
   return r.rows;
-}
-
-async function highestConsumption(filters, from, to, period) {
-  const resumen = resumenMediciones(filters, from, to, period);
-  const r = await pool.query(
-    `${resumen.sql}
-      SELECT
-        (SELECT json_build_object(
-          'circuito_id', circuito_id, 'circuito', circuito,
-          'dispositivo_id', dispositivo_id, 'panel_id', panel_id,
-          'panel_nombre', panel_nombre, 'consumo_energia', consumo_energia,
-          'promedio_potencia', promedio_potencia, 'promedio_voltaje', promedio_voltaje,
-          'promedio_corriente', promedio_corriente,
-          'promedio_factor_potencia', promedio_factor_potencia,
-          'cantidad_muestras', cantidad_muestras, 'desde', desde, 'hasta', hasta
-        ) FROM resumen_circuitos
-         ORDER BY consumo_energia DESC NULLS LAST, circuito_id LIMIT 1) AS circuito,
-        (SELECT json_build_object(
-          'panel_id', panel_id, 'panel_nombre', panel_nombre,
-          'consumo_energia', consumo_energia, 'promedio_potencia', promedio_potencia,
-          'promedio_voltaje', promedio_voltaje, 'promedio_corriente', promedio_corriente,
-          'promedio_factor_potencia', promedio_factor_potencia,
-          'cantidad_muestras', cantidad_muestras, 'desde', desde, 'hasta', hasta
-        ) FROM resumen_paneles
-         ORDER BY consumo_energia DESC NULLS LAST, panel_id LIMIT 1) AS panel`,
-    resumen.params,
-  );
-  return r.rows[0] || { circuito: null, panel: null };
-}
-
-async function wholeHomeConsumption(filters, from, to, period) {
-  const resumen = resumenMediciones(filters, from, to, period);
-  const r = await pool.query(
-    `${resumen.sql}
-      SELECT COALESCE(SUM(consumo_energia), 0) AS consumo_energia,
-        COALESCE(SUM(promedio_potencia), 0) AS promedio_potencia,
-        AVG(promedio_voltaje) AS promedio_voltaje,
-        AVG(promedio_corriente) AS promedio_corriente,
-        AVG(promedio_factor_potencia) AS promedio_factor_potencia,
-        COALESCE(SUM(cantidad_muestras), 0)::int AS cantidad_muestras,
-        MIN(desde) AS desde, MAX(hasta) AS hasta
-      FROM resumen_circuitos`,
-    resumen.params,
-  );
-  return r.rows[0];
 }
 
 module.exports = {
@@ -263,6 +239,4 @@ module.exports = {
   statistics,
   comparePanels,
   compareCircuits,
-  highestConsumption,
-  wholeHomeConsumption,
 };

@@ -206,51 +206,6 @@ async function history(predioId, userId, query) {
   });
 }
 
-async function comparison(predioId, userId, query) {
-  const filtros = await autorizar(predioId, userId, query);
-  const fromA = fecha(query.fromA, "fromA");
-  const toA = fecha(query.toA, "toA");
-  const fromB = fecha(query.fromB, "fromB");
-  const toB = fecha(query.toB, "toB");
-  if (!fromA || !toA || !fromB || !toB)
-    throw error(400, "fromA, toA, fromB y toB son obligatorios");
-  if (new Date(fromA) > new Date(toA) || new Date(fromB) > new Date(toB))
-    throw error(400, "Cada rango debe tener from anterior a to");
-  const [a, b] = await Promise.all([
-    repo.aggregate({ predioId, ...filtros }, fromA, toA, "day"),
-    repo.aggregate({ predioId, ...filtros }, fromB, toB, "day"),
-  ]);
-  const resumen = (rows) => ({
-    consumo_energia: rows.reduce(
-      (s, x) => s + Number(x.consumo_energia || 0),
-      0,
-    ),
-    promedio_potencia: rows.length
-      ? rows.reduce((s, x) => s + Number(x.promedio_potencia || 0), 0) /
-        rows.length
-      : null,
-    muestras: rows.reduce((s, x) => s + Number(x.cantidad_muestras || 0), 0),
-  });
-  const periodoA = resumen(a);
-  const periodoB = resumen(b);
-  return respuesta(
-    {
-      periodoA,
-      periodoB,
-      diferencia: {
-        consumo_energia: periodoA.consumo_energia - periodoB.consumo_energia,
-        promedio_potencia:
-          periodoA.promedio_potencia === null ||
-          periodoB.promedio_potencia === null
-            ? null
-            : periodoA.promedio_potencia - periodoB.promedio_potencia,
-      },
-    },
-    filtros,
-    { operation: "comparison", source: "mediciones", granularity: "day" },
-  );
-}
-
 async function statistics(predioId, userId, query) {
   const filtros = await autorizar(predioId, userId, query);
   const rangoConsulta = rango(query);
@@ -329,48 +284,11 @@ async function compareCircuits(predioId, userId, query) {
   });
 }
 
-async function highestConsumption(predioId, userId, query) {
-  const filtros = await autorizarConsulta(predioId, userId, query);
-  const ventana = ventanaComparacion(query);
-  const data = await repo.highestConsumption(
-    { predioId, ...filtros },
-    ventana.from,
-    ventana.to,
-    ventana.period,
-  );
-  return respuesta(data, filtros, {
-    operation: "highest-consumption",
-    source: "mediciones",
-    granularity: ventana.period,
-    ...ventana,
-  });
-}
-
-async function wholeHomeConsumption(predioId, userId, query) {
-  const filtros = await autorizarConsulta(predioId, userId, query);
-  const ventana = ventanaComparacion(query);
-  const data = await repo.wholeHomeConsumption(
-    { predioId, ...filtros },
-    ventana.from,
-    ventana.to,
-    ventana.period,
-  );
-  return respuesta(data, filtros, {
-    operation: "whole-home-consumption",
-    source: "mediciones",
-    granularity: ventana.period,
-    ...ventana,
-  });
-}
-
 module.exports = {
   current,
   period,
   history,
-  comparison,
   statistics,
   comparePanels,
   compareCircuits,
-  highestConsumption,
-  wholeHomeConsumption,
 };
