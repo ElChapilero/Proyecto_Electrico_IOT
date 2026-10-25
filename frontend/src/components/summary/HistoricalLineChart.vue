@@ -113,6 +113,7 @@
 
 <script setup>
 import { computed, ref } from "vue";
+import { chartTooltipPosition } from "../../utils/chartTooltip";
 
 const props = defineProps({
   title: { type: String, required: true },
@@ -237,19 +238,11 @@ function formatAxisDate(value) {
 function showTooltip(event, point) {
   const container = chartWrap.value?.getBoundingClientRect();
   const marker = event.currentTarget?.getBoundingClientRect();
-  if (!container || !marker) return;
-  const half = Math.min(140, Math.max(80, container.width / 2 - 8));
-  const center = marker.left + marker.width / 2;
-  const left = Math.min(
-    Math.max(center, container.left + half),
-    container.right - half,
-  );
-  const below = marker.top - container.top < 110;
+  const position = chartTooltipPosition(container, marker);
+  if (!position) return;
   tooltip.value = {
     ...point,
-    left,
-    top: below ? marker.bottom + 10 : marker.top - 10,
-    below,
+    ...position,
   };
 }
 function hideTooltip() {

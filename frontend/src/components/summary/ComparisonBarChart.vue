@@ -10,7 +10,7 @@
     <div v-if="!bars.length" class="chart-empty">
       No hay datos comparables para este periodo.
     </div>
-    <div v-else class="chart-wrap">
+    <div v-else ref="chartWrap" class="chart-wrap">
       <svg
         class="chart"
         viewBox="0 0 1200 390"
@@ -79,6 +79,7 @@
       <div
         v-if="tooltip"
         class="chart-tooltip"
+        :class="{ 'tooltip-below': tooltip.below }"
         :style="{ left: `${tooltip.left}px`, top: `${tooltip.top}px` }"
         role="status"
       >
@@ -109,6 +110,7 @@
 
 <script setup>
 import { computed, ref } from "vue";
+import { chartTooltipPosition } from "../../utils/chartTooltip";
 
 const props = defineProps({
   title: { type: String, required: true },
@@ -181,22 +183,13 @@ function formatDate(value) {
   }).format(date);
 }
 function showTooltip(event, bar) {
+  const container = chartWrap.value?.getBoundingClientRect();
   const marker = event.currentTarget?.getBoundingClientRect();
-  if (!marker) return;
-  const pointerLeft = event.clientX || marker.left + marker.width / 2;
-  const pointerTop = event.clientY || marker.bottom;
-  const tooltipWidth = 210;
-  const tooltipHeight = 86;
+  const position = chartTooltipPosition(container, marker);
+  if (!position) return;
   tooltip.value = {
     ...bar,
-    left: Math.max(
-      tooltipWidth / 2 + 8,
-      Math.min(pointerLeft + 12, window.innerWidth - tooltipWidth / 2 - 8),
-    ),
-    top: Math.max(
-      8,
-      Math.min(pointerTop + 14, window.innerHeight - tooltipHeight - 8),
-    ),
+    ...position,
   };
 }
 function hideTooltip() {
@@ -273,7 +266,7 @@ function hideTooltip() {
 .chart-tooltip {
   position: fixed;
   z-index: 1000;
-  transform: none;
+  transform: translate(-50%, -100%);
   display: grid;
   gap: 4px;
   min-width: 190px;
@@ -285,6 +278,9 @@ function hideTooltip() {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   font-size: 12px;
   pointer-events: none;
+}
+.chart-tooltip.tooltip-below {
+  transform: translate(-50%, 0);
 }
 .chart-tooltip span {
   font-weight: 700;

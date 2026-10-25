@@ -10,7 +10,7 @@
     <div v-if="!validPoints.length" class="chart-empty">
       No hay mediciones para los filtros seleccionados.
     </div>
-    <div v-else class="chart-layout">
+    <div v-else ref="chartWrap" class="chart-layout">
       <svg class="y-axis" viewBox="0 0 82 390" aria-hidden="true">
         <g class="y-axis-labels">
           <text
@@ -87,6 +87,7 @@
     <div
       v-if="tooltip"
       class="chart-tooltip"
+      :class="{ 'tooltip-below': tooltip.below }"
       :style="{ left: `${tooltip.left}px`, top: `${tooltip.top}px` }"
       role="status"
     >
@@ -99,6 +100,7 @@
 </template>
 <script setup>
 import { computed, ref } from "vue";
+import { chartTooltipPosition } from "../../utils/chartTooltip";
 const props = defineProps({
   points: { type: Array, default: () => [] },
   variable: { type: String, required: true },
@@ -130,6 +132,7 @@ const validPoints = computed(() =>
 const canvasWidth = computed(
   () => 980 * Math.max(1, Math.ceil(validPoints.value.length / 30)),
 );
+const chartWrap = ref(null);
 const tooltip = ref(null);
 const bounds = computed(() => {
   const values = validPoints.value.map((point) => Number(point[dataKey.value]));
@@ -189,6 +192,10 @@ function formatValue(value) {
   return Number(value).toLocaleString("es-CO", { maximumFractionDigits: 3 });
 }
 function showTooltip(event, point) {
+  const container = chartWrap.value?.getBoundingClientRect();
+  const marker = event.currentTarget?.getBoundingClientRect();
+  const position = chartTooltipPosition(container, marker);
+  if (!position) return;
   tooltip.value = {
     value: point.value,
     date: new Intl.DateTimeFormat("es-CO", {
@@ -200,8 +207,7 @@ function showTooltip(event, point) {
       hour12: false,
       timeZone: "America/Bogota",
     }).format(new Date(point.fecha_hora)),
-    left: Math.min((event.clientX || 0) + 12, window.innerWidth - 230),
-    top: Math.min((event.clientY || 0) + 12, window.innerHeight - 135),
+    ...position,
   };
 }
 function hideTooltip() {
@@ -308,6 +314,7 @@ function hideTooltip() {
 .chart-tooltip {
   position: fixed;
   z-index: 1000;
+  transform: translate(-50%, -100%);
   display: grid;
   gap: 4px;
   min-width: 205px;
@@ -319,6 +326,9 @@ function hideTooltip() {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   font-size: 12px;
   pointer-events: none;
+}
+.chart-tooltip.tooltip-below {
+  transform: translate(-50%, 0);
 }
 .chart-tooltip span {
   font-weight: 600;
