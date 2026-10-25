@@ -53,7 +53,15 @@
           :circuits-by-device="circuitsByDevice"
           :selected="selected"
           :is-admin="isAdmin"
-          v-bind="$attrs"
+          @select="emit('select', $event)"
+          @rename-panel="emit('rename-panel', $event)"
+          @add-secondary="emit('add-secondary', $event)"
+          @delete-panel="emit('delete-panel', $event)"
+          @rename-device="emit('rename-device', $event)"
+          @move-device="emit('move-device', $event)"
+          @delete-device="emit('delete-device', $event)"
+          @rename-circuit="emit('rename-circuit', $event)"
+          @delete-circuit="emit('delete-circuit', $event)"
         />
       </li>
     </ul>
