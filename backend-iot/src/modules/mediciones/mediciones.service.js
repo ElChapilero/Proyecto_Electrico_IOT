@@ -44,10 +44,6 @@ async function estadisticas(id, userId, query) {
   validarRangoFechas(query);
   return repo.stats(id, query.from, query.to);
 }
-async function comparaciones(id, userId) {
-  await authorize(id, userId);
-  return repo.comparison(id);
-}
 function validarPeriodo(period) {
   if (period !== undefined && !["day", "week", "month"].includes(period))
     throw error(400, "period debe ser day, week o month");
@@ -70,4 +66,4 @@ async function dashboardData(id, userId, query = {}) {
     },
   };
 }
-module.exports = { actual, list, consumo, estadisticas, comparaciones, dashboardData };
+module.exports = { actual, list, consumo, estadisticas, dashboardData };

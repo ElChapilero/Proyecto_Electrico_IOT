@@ -8,6 +8,7 @@ import ProfileView from "../views/ProfileView.vue";
 import AccessManagementView from "../views/AccessManagementView.vue";
 import DispositivosView from "../views/DispositivosView.vue";
 import SummaryView from "../views/SummaryView.vue";
+import HistoryView from "../views/HistoryView.vue";
 import AppShell from "../components/layout/AppShell.vue";
 import { useAuthStore } from "../stores/authStore";
 
@@ -42,12 +43,7 @@ const router = createRouter({
         },
         {
           path: "historial",
-          component: SectionPlaceholderView,
-          props: {
-            title: "Historial",
-            description:
-              "Aquí se visualizarán las mediciones históricas con filtros por predio, panel y circuito.",
-          },
+          component: HistoryView,
         },
         {
           path: "dispositivos",

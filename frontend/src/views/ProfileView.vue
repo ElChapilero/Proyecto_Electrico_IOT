@@ -283,7 +283,7 @@ onMounted(loadProfile);
 }
 .eyebrow {
   color: var(--color-primary);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -355,7 +355,7 @@ form {
 .created-date {
   margin-top: 22px;
   color: var(--color-muted);
-  font-size: 12px;
+  font-size: 13px;
 }
 .state-card {
   padding: 28px;
@@ -396,7 +396,7 @@ form {
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-primary);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -408,7 +408,7 @@ form {
   padding: 0;
   color: var(--color-muted);
   list-style: none;
-  font-size: 12px;
+  font-size: 13px;
 }
 .password-rules li::before {
   content: "○";

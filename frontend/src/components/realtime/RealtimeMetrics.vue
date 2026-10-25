@@ -44,7 +44,7 @@ defineProps({
 }
 .metric small {
   color: #fff;
-  font-size: 12px;
+  font-size: 13px;
 }
 @media (max-width: 900px) {
   .metrics {

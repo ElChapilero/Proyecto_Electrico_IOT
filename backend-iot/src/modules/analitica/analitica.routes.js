@@ -6,9 +6,4 @@ const router = express.Router();
 router.use(requiereAuth);
 router.get("/circuitos/:circuitoId/consumo", validarUuidParam("circuitoId"), controller.consumo);
 router.get("/circuitos/:circuitoId/estadisticas", validarUuidParam("circuitoId"), controller.estadisticas);
-router.get(
-  "/circuitos/:circuitoId/comparaciones/semana-anterior",
-  validarUuidParam("circuitoId"),
-  controller.comparaciones,
-);
 module.exports = router;

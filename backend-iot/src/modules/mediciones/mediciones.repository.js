@@ -39,14 +39,6 @@ async function stats(circuitId, from, to) {
   );
   return r.rows[0];
 }
-async function comparison(circuitId) {
-  const r = await pool.query(
-    `WITH periodos AS (SELECT CASE WHEN created_at >= now() - interval '7 days' THEN 'actual' ELSE 'anterior' END AS periodo, GREATEST(MAX(energia) - MIN(energia), 0) AS consumo FROM mediciones WHERE circuito_id = $1 AND created_at >= now() - interval '14 days' GROUP BY 1) SELECT * FROM periodos ORDER BY periodo`,
-    [circuitId],
-  );
-  return r.rows;
-}
-
 async function dashboard(circuitId, from, to, period) {
   const bucket = period === "day" ? "hour" : "day";
   const r = await pool.query(
@@ -111,4 +103,4 @@ async function dashboard(circuitId, from, to, period) {
   return r.rows[0];
 }
 
-module.exports = { latest, list, consumption, stats, comparison, dashboard };
+module.exports = { latest, list, consumption, stats, dashboard };

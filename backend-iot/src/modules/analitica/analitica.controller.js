@@ -13,7 +13,4 @@ module.exports = {
   estadisticas: wrap((req) =>
     service.obtenerEstadisticas(req.params.circuitoId, req.usuario.id, req.query),
   ),
-  comparaciones: wrap((req) =>
-    service.compararConSemanaAnterior(req.params.circuitoId, req.usuario.id),
-  ),
 };

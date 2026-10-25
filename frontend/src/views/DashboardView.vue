@@ -33,6 +33,7 @@
         v-model:selected-circuit-id="selectedCircuitId"
         v-model:range-minutes="rangeMinutes"
         :panels="selectablePanels"
+        :disabled-panel-ids="disabledPanelIds"
         :can-compare-panels="canComparePanels"
         :circuit-options="circuitOptions"
         :visible-count="visibleRecords.length"
@@ -81,6 +82,7 @@ const {
   loading,
   loadError,
   panels,
+  panelsWithDevices: panelsWithEsp32,
   records,
   loadData,
   refreshMeasurements,
@@ -88,17 +90,24 @@ const {
   chartSeries,
   invalidate,
 } = useRealtimeData(predio.predioId);
-const panelsWithDevices = computed(() =>
-  panels.value.filter((panel) =>
-    records.value.some(
-      (record) => record.panel.id === panel.id && record.device,
+const panelsWithDevices = computed(() => panelsWithEsp32.value);
+const selectablePanels = computed(() => panels.value);
+const disabledPanelIds = computed(
+  () =>
+    new Set(
+      panels.value
+        .filter(
+          (panel) =>
+            !panelsWithDevices.value.some((item) => item.id === panel.id),
+        )
+        .map((panel) => String(panel.id)),
     ),
-  ),
 );
-const selectablePanels = computed(() =>
-  panelsWithDevices.value.length ? panelsWithDevices.value : panels.value,
+const canComparePanels = computed(
+  () =>
+    panelsWithDevices.value.filter((panel) => panel.tipo_panel === "Principal")
+      .length > 1,
 );
-const canComparePanels = computed(() => panelsWithDevices.value.length > 1);
 const circuitOptions = computed(() =>
   selectedPanelId.value === "all"
     ? []
@@ -112,8 +121,9 @@ const circuitOptions = computed(() =>
 const visibleRecords = computed(() =>
   records.value.filter(
     (record) =>
-      (selectedPanelId.value === "all" ||
-        record.panel.id === selectedPanelId.value) &&
+      (selectedPanelId.value === "all"
+        ? record.panel.tipo_panel === "Principal"
+        : record.panel.id === selectedPanelId.value) &&
       (selectedCircuitId.value === "all" ||
         record.circuit.id === selectedCircuitId.value),
   ),
@@ -128,14 +138,23 @@ const seriesByMetric = computed(() =>
 );
 let refreshTimer;
 function syncFilters() {
-  const panelIds = new Set(
-    selectablePanels.value.map((panel) => String(panel.id)),
+  const validPanels = selectablePanels.value.filter(
+    (panel) => !disabledPanelIds.value.has(String(panel.id)),
   );
+  const panelIds = new Set(validPanels.map((panel) => String(panel.id)));
   const selectedPanel = String(selectedPanelId.value);
-  if (!canComparePanels.value && selectablePanels.value.length) {
-    selectedPanelId.value = String(selectablePanels.value[0].id);
-  } else if (selectedPanel !== "all" && !panelIds.has(selectedPanel)) {
-    selectedPanelId.value = "all";
+  if (selectedPanel !== "all" && !panelIds.has(selectedPanel)) {
+    if (!canComparePanels.value && validPanels.length) {
+      selectedPanelId.value = String(validPanels[0].id);
+    } else if (canComparePanels.value) {
+      selectedPanelId.value = "all";
+    }
+  } else if (
+    selectedPanel === "all" &&
+    !canComparePanels.value &&
+    validPanels.length
+  ) {
+    selectedPanelId.value = String(validPanels[0].id);
   }
   const availableCircuits = circuitOptions.value.map((item) => String(item.id));
   if (
@@ -186,7 +205,7 @@ onUnmounted(() => {
 
 .eyebrow {
   color: var(--color-primary);
-  font-size: 11px;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   font-weight: 700;

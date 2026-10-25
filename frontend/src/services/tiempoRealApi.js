@@ -15,4 +15,28 @@ export const tiempoRealApi = {
     if (to) params.set("to", to);
     return http.get(`/circuitos/${circuitoId}/analitica/dashboard?${params}`);
   },
+  compararPaneles: async (predioId, { period, from, to }) => {
+    const params = new URLSearchParams({ period });
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    const response = await http.get(`/predios/${predioId}/analitica/paneles/comparacion?${params}`);
+    return Array.isArray(response) ? response : Array.isArray(response?.data) ? response.data : [];
+  },
+  compararCircuitos: async (predioId, { period, from, to, panelId }) => {
+    const params = new URLSearchParams({ period });
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    if (panelId) params.set("panelId", panelId);
+    const response = await http.get(`/predios/${predioId}/analitica/circuitos/comparacion?${params}`);
+    return Array.isArray(response) ? response : Array.isArray(response?.data) ? response.data : [];
+  },
+  historial: async (predioId, { from, to, panelId, circuitId, limit = 5000 }) => {
+    const params = new URLSearchParams({ granularity: "hour", limit: String(limit) });
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    if (panelId) params.set("panelId", panelId);
+    if (circuitId) params.set("circuitId", circuitId);
+    const response = await http.get(`/predios/${predioId}/analitica/history?${params}`);
+    return Array.isArray(response?.data) ? response.data : [];
+  },
 };

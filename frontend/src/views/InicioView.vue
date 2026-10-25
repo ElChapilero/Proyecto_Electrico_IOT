@@ -31,6 +31,39 @@
         ><b v-if="index < flow.length - 1">→</b>
       </div>
     </section>
+    <section class="section-heading variables-heading">
+      <div>
+        <span class="eyebrow">Lecturas del sistema</span>
+        <h3>Variables eléctricas</h3>
+      </div>
+      <p>
+        Conoce los valores que describen el comportamiento de la electricidad
+        en tu hogar.
+      </p>
+    </section>
+    <section class="variables-intro page-card">
+      <p>
+        Las variables eléctricas nos ayudan a entender cómo se comporta la
+        electricidad en los circuitos de tu hogar. Al medirlas desde el
+        breaker, podemos conocer cuánta electricidad circula por cada circuito,
+        cuánto consume a lo largo del tiempo y si sus valores se mantienen
+        dentro de los rangos esperados.
+      </p>
+    </section>
+    <section class="variables-grid" aria-label="Variables eléctricas">
+      <article
+        v-for="variable in electricalVariables"
+        :key="variable.label"
+        class="variable-card page-card"
+        :style="{ '--variable-color': variable.color }"
+      >
+        <div class="variable-card-header">
+          <h4>{{ variable.label }}</h4>
+          <span class="variable-unit">{{ variable.unit }}</span>
+        </div>
+        <p>{{ variable.description }}</p>
+      </article>
+    </section>
     <section class="section-heading quick-heading">
       <div>
         <span class="eyebrow">Accesos rápidos</span>
@@ -75,6 +108,43 @@ const flow = [
   { name: "Backend", detail: "Valida", icon: "⌘" },
   { name: "PostgreSQL", detail: "Guarda", icon: "▣" },
   { name: "Aplicación web", detail: "Presenta", icon: "◌" },
+];
+const electricalVariables = [
+  {
+    label: "Energía",
+    unit: "kWh",
+    color: "#39FF14",
+    description:
+      "Indica cuánta electricidad se ha consumido durante un periodo de tiempo. Se utiliza para hacer seguimiento del consumo y estimar el consumo de la energía.",
+  },
+  {
+    label: "Potencia",
+    unit: "W",
+    color: "#DFFF00",
+    description:
+      "Representa la cantidad de energía que los equipos están utilizando en un momento determinado. Permite conocer cómo cambia la demanda eléctrica cuando se encienden o apagan equipos.",
+  },
+  {
+    label: "Voltaje",
+    unit: "V",
+    color: "#FF3131",
+    description:
+      "Indica la fuerza con la que circula la electricidad. Medirlo permite comprobar si se mantiene dentro del rango esperado para el funcionamiento de los equipos conectados a ese circuito.",
+  },
+  {
+    label: "Corriente",
+    unit: "A",
+    color: "#7B2CFF",
+    description:
+      "Muestra cuánta electricidad está circulando por el circuito. Se utiliza para conocer la carga conectada y detectar consumos elevados.",
+  },
+  {
+    label: "Factor de potencia",
+    unit: "FP",
+    color: "#FF6A00",
+    description:
+      "Indica qué tan eficientemente se está utilizando la electricidad. Un valor cercano a 1 significa que la energía se está aprovechando mejor.",
+  },
 ];
 const quickLinks = [
   {
@@ -139,7 +209,7 @@ const quickLinks = [
 
 .eyebrow {
   color: var(--color-primary);
-  font-size: 11px;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-weight: 700;
@@ -237,7 +307,7 @@ const quickLinks = [
 
 .section-heading p {
   color: var(--color-muted);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .flow {
@@ -282,12 +352,75 @@ const quickLinks = [
 
 .flow-step strong {
   color: #dceaff;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .flow-step small {
   color: var(--color-muted);
-  font-size: 10px;
+  font-size: 13px;
+}
+
+.variables-heading {
+  margin-top: 4px;
+}
+
+.variables-intro {
+  padding: 18px 22px;
+}
+
+.variables-intro p {
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.65;
+  max-width: 900px;
+}
+
+.variables-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.variable-card {
+  min-height: 190px;
+  padding: 18px;
+  border-color: color-mix(in srgb, var(--variable-color) 22%, transparent);
+  border-top: 3px solid var(--variable-color);
+  transition:
+    transform var(--transition),
+    border-color var(--transition);
+}
+
+.variable-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--variable-color) 62%, transparent);
+  border-top-color: var(--variable-color);
+}
+
+.variable-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.variable-unit {
+  color: var(--variable-color);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.variable-card h4 {
+  color: #dceaff;
+  font-size: 15px;
+}
+
+.variable-card p {
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .quick-heading {
@@ -334,7 +467,7 @@ const quickLinks = [
 }
 
 .quick-card small {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--color-muted);
 }
 
@@ -362,7 +495,7 @@ const quickLinks = [
 }
 
 .guide p {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-muted);
   line-height: 1.5;
   margin-top: 6px;
@@ -396,6 +529,10 @@ const quickLinks = [
 
   .quick-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .variables-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -431,6 +568,10 @@ const quickLinks = [
   }
 
   .quick-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .variables-grid {
     grid-template-columns: 1fr;
   }
 

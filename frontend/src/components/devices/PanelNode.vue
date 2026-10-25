@@ -53,7 +53,15 @@
           :circuits-by-device="circuitsByDevice"
           :selected="selected"
           :is-admin="isAdmin"
-          v-bind="$attrs"
+          @select="emit('select', $event)"
+          @rename-panel="emit('rename-panel', $event)"
+          @add-secondary="emit('add-secondary', $event)"
+          @delete-panel="emit('delete-panel', $event)"
+          @rename-device="emit('rename-device', $event)"
+          @move-device="emit('move-device', $event)"
+          @delete-device="emit('delete-device', $event)"
+          @rename-circuit="emit('rename-circuit', $event)"
+          @delete-circuit="emit('delete-circuit', $event)"
         />
       </li>
     </ul>
@@ -200,7 +208,7 @@ const emit = defineEmits([
 }
 .node-copy small {
   color: #fff;
-  font-size: 11px;
+  font-size: 13px;
 }
 .node-actions {
   display: flex;
@@ -215,7 +223,7 @@ const emit = defineEmits([
   border-radius: var(--radius-sm);
   background: var(--color-primary);
   color: #081321;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
 }
 .action-button:hover {
@@ -242,7 +250,7 @@ const emit = defineEmits([
   align-items: center;
   gap: 8px;
   color: #fff;
-  font-size: 12px;
+  font-size: 13px;
   margin: 3px 0;
   padding: 8px 10px;
   border-radius: var(--radius-sm);

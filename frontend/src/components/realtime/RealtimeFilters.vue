@@ -4,11 +4,14 @@
       label="Panel"
       :model-value="selectedPanelId"
       @update:model-value="$emit('update:selectedPanelId', $event)"
-      ><option v-if="canComparePanels" value="all">
-        Comparar todos los paneles
-      </option>
-      <option v-for="panel in panels" :key="panel.id" :value="panel.id">
-        {{ panelLabel(panel) }}
+      ><option value="all" :disabled="!canComparePanels">Comparar - Pri</option>
+      <option
+        v-for="panel in panels"
+        :key="panel.id"
+        :value="panel.id"
+        :disabled="disabledPanelIds.has(String(panel.id))"
+      >
+        {{ panelOptionLabel(panel) }}
       </option></BaseSelect
     ><BaseSelect
       label="Circuito"
@@ -46,9 +49,10 @@
 </template>
 <script setup>
 import BaseSelect from "../common/BaseSelect.vue";
-import { panelLabel } from "../../composables/useRealtimeData";
+import { panelOptionLabel } from "../../utils/panelOptions";
 defineProps({
   panels: Array,
+  disabledPanelIds: { type: Object, default: () => new Set() },
   canComparePanels: Boolean,
   selectedPanelId: [String, Number],
   selectedCircuitId: [String, Number],

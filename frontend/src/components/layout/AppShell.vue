@@ -32,10 +32,18 @@
               <span class="menu-chevron" aria-hidden="true">⌄</span>
             </button>
             <div v-if="menuOpen" class="user-dropdown" role="menu">
-              <router-link to="/dashboard/perfil" role="menuitem" @click="closeMenu">
+              <router-link
+                to="/dashboard/perfil"
+                role="menuitem"
+                @click="closeMenu"
+              >
                 <span>◉</span> Mi perfil
               </router-link>
-              <router-link to="/dashboard/accesos" role="menuitem" @click="closeMenu">
+              <router-link
+                to="/dashboard/accesos"
+                role="menuitem"
+                @click="closeMenu"
+              >
                 <span>♧</span> Accesos y roles
               </router-link>
               <div class="menu-divider" />
@@ -88,7 +96,8 @@ function closeMenu() {
   menuOpen.value = false;
 }
 function handleDocumentClick(event) {
-  if (userMenuRef.value && !userMenuRef.value.contains(event.target)) closeMenu();
+  if (userMenuRef.value && !userMenuRef.value.contains(event.target))
+    closeMenu();
 }
 function handleEscape(event) {
   if (event.key === "Escape") closeMenu();
@@ -225,7 +234,7 @@ function logout() {
 .user-details {
   display: grid;
   gap: 2px;
-  font-size: 12px;
+  font-size: 13px;
 }
 .user-details strong {
   max-width: 130px;
@@ -300,7 +309,7 @@ function logout() {
   border-radius: var(--radius-sm);
   background: #1b2d43;
   color: #fff;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 }
 .logout-button:hover {
@@ -329,7 +338,7 @@ function logout() {
     gap: 12px;
   }
   .top-nav a {
-    font-size: 12px;
+    font-size: 13px;
   }
   .user-chip {
     display: flex;
@@ -395,7 +404,7 @@ function logout() {
     scroll-snap-align: start;
     color: #fff;
     text-decoration: none;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 600;
     text-align: center;
   }
