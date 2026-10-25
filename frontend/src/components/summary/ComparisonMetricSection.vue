@@ -55,7 +55,7 @@ defineProps({
   margin-top: 6px;
 }
 .eyebrow {
-  font-size: 11px;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
@@ -83,7 +83,7 @@ defineProps({
 }
 .metric-card small {
   color: #fff;
-  font-size: 12px;
+  font-size: 13px;
 }
 @media (max-width: 650px) {
   .cards-row {

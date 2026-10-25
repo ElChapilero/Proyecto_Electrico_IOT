@@ -86,7 +86,7 @@ async function submit() {
 .kicker {
   margin-top: 26px;
   color: var(--color-primary);
-  font-size: 12px;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-weight: 700;

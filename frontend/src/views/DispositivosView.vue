@@ -482,7 +482,7 @@ onUnmounted(() => {
 }
 .eyebrow {
   color: var(--color-primary);
-  font-size: 11px;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   font-weight: 700;
@@ -524,7 +524,7 @@ onUnmounted(() => {
 }
 .live-dot {
   color: var(--color-success);
-  font-size: 11px;
+  font-size: 13px;
 }
 .tree {
   list-style: none;
@@ -576,7 +576,7 @@ onUnmounted(() => {
 }
 .node-copy small {
   color: #fff;
-  font-size: 11px;
+  font-size: 13px;
 }
 .node-actions {
   display: flex;
@@ -591,7 +591,7 @@ onUnmounted(() => {
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-sm);
   color: #081321;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
 }
 .node-actions button:hover {
@@ -623,7 +623,7 @@ onUnmounted(() => {
 .code-box span,
 .code-box small {
   color: var(--color-muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 .code-box strong {
   font: 800 32px var(--font-display);

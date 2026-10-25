@@ -14,7 +14,7 @@ defineProps({ label: String, tone: { type: String, default: "neutral" } });
   border-radius: 999px;
   background: #eef2f1;
   color: var(--color-muted);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
 }
 .badge-success {

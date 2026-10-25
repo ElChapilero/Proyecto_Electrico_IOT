@@ -215,7 +215,7 @@ watch(() => [predio.predioId.value, isAdmin.value], loadAccesses, {
 .eyebrow,
 .section-kicker {
   color: var(--color-primary);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -233,7 +233,7 @@ h1 {
 .role-badge {
   padding: 7px 11px;
   border-radius: 99px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   text-transform: capitalize;
 }
@@ -333,7 +333,7 @@ h2 {
 .person-data span {
   margin-top: 3px;
   color: var(--color-muted);
-  font-size: 12px;
+  font-size: 13px;
 }
 .remove-button {
   border: 1px solid rgba(255, 40, 65, 0.4);
@@ -341,7 +341,7 @@ h2 {
   padding: 8px 10px;
   background: transparent;
   color: #ffb3bd;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
 }

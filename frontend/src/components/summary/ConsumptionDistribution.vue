@@ -99,7 +99,7 @@ function formatPercent(value) {
 }
 .eyebrow {
   color: var(--color-primary);
-  font-size: 11px;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
@@ -148,7 +148,7 @@ function formatPercent(value) {
   font-size: 22px;
 }
 .donut small {
-  font-size: 12px;
+  font-size: 13px;
 }
 .legend {
   display: grid;
@@ -171,7 +171,7 @@ function formatPercent(value) {
   border-radius: 3px;
 }
 .legend strong {
-  font-size: 12px;
+  font-size: 13px;
 }
 .empty {
   min-height: 240px;

@@ -210,7 +210,7 @@ function hideTooltip() {
 }
 .eyebrow {
   color: var(--color-primary);
-  font-size: 11px;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
@@ -224,7 +224,7 @@ function hideTooltip() {
   border-radius: 6px;
   background: var(--color-primary-soft);
   color: #dceaff;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 }
 .chart-wrap {
@@ -276,7 +276,7 @@ function hideTooltip() {
   background: #0b1728;
   color: #fff;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  font-size: 12px;
+  font-size: 13px;
   pointer-events: none;
 }
 .chart-tooltip.tooltip-below {
@@ -287,7 +287,7 @@ function hideTooltip() {
 }
 .chart-tooltip small {
   color: #c6d8ed;
-  font-size: 11px;
+  font-size: 13px;
 }
 .chart-empty {
   min-height: 280px;
@@ -301,7 +301,7 @@ function hideTooltip() {
   gap: 14px;
   margin-top: 10px;
   color: #fff;
-  font-size: 12px;
+  font-size: 13px;
 }
 .chart-footer span {
   display: inline-flex;

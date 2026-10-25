@@ -234,7 +234,7 @@ function logout() {
 .user-details {
   display: grid;
   gap: 2px;
-  font-size: 12px;
+  font-size: 13px;
 }
 .user-details strong {
   max-width: 130px;
@@ -309,7 +309,7 @@ function logout() {
   border-radius: var(--radius-sm);
   background: #1b2d43;
   color: #fff;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 }
 .logout-button:hover {
@@ -338,7 +338,7 @@ function logout() {
     gap: 12px;
   }
   .top-nav a {
-    font-size: 12px;
+    font-size: 13px;
   }
   .user-chip {
     display: flex;
@@ -404,7 +404,7 @@ function logout() {
     scroll-snap-align: start;
     color: #fff;
     text-decoration: none;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 600;
     text-align: center;
   }

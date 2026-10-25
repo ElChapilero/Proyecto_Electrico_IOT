@@ -653,7 +653,7 @@ onBeforeUnmount(() => clearInterval(refreshTimer));
 }
 .eyebrow {
   color: var(--color-primary);
-  font-size: 11px;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   font-weight: 700;
@@ -751,7 +751,7 @@ onBeforeUnmount(() => clearInterval(refreshTimer));
 }
 .metric-card small {
   color: #fff;
-  font-size: 12px;
+  font-size: 13px;
 }
 @media (max-width: 1100px) {
   .filters {
