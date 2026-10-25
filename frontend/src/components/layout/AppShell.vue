@@ -81,7 +81,6 @@ const navItems = [
   { path: "/dashboard/alertas", label: "Alertas", icon: "!" },
   { path: "/dashboard/historial", label: "Historial", icon: "◷" },
   { path: "/dashboard/dispositivos", label: "Dispositivos", icon: "⌗" },
-  { path: "/dashboard/configuracion", label: "Configuración", icon: "⚙" },
 ];
 const router = useRouter();
 const auth = useAuthStore();

@@ -71,36 +71,78 @@
       </div>
     </section>
     <section class="quick-grid">
-      <router-link
-        v-for="item in quickLinks"
-        :key="item.path"
-        class="quick-card page-card"
-        :to="item.path"
-        ><span class="quick-icon">{{ item.icon }}</span
-        ><span
-          ><strong>{{ item.label }}</strong
-          ><small>{{ item.description }}</small></span
-        ><b>→</b></router-link
-      >
+      <template v-for="item in quickLinks" :key="item.path">
+        <button
+          v-if="item.modal"
+          type="button"
+          class="quick-card page-card"
+          @click="openQuickModal(item)"
+          ><span class="quick-icon">{{ item.icon }}</span
+          ><span
+            ><strong>{{ item.label }}</strong
+            ><small>{{ item.description }}</small></span
+          ><b>→</b>
+        </button>
+        <router-link
+          v-else
+          class="quick-card page-card"
+          :to="item.path"
+          ><span class="quick-icon">{{ item.icon }}</span
+          ><span
+            ><strong>{{ item.label }}</strong
+            ><small>{{ item.description }}</small></span
+          ><b>→</b></router-link
+        >
+      </template>
     </section>
-    <section class="guide page-card">
-      <div class="guide-number">01</div>
-      <div>
-        <span class="eyebrow">Guía de uso</span>
-        <h3>Selecciona un predio para empezar</h3>
-        <p>
-          Usa el selector superior para cambiar el contexto de trabajo. Las
-          próximas vistas cargarán únicamente información perteneciente al
-          predio seleccionado.
-        </p>
+    <BaseModal
+      v-if="activeQuickModal"
+      :title="activeQuickModal.title"
+      @close="closeQuickModal"
+    >
+      <div class="quick-modal-content">
+        <p class="quick-modal-intro">{{ activeQuickModal.intro }}</p>
+        <div
+          v-for="section in activeQuickModal.sections"
+          :key="section.title"
+          class="quick-modal-section"
+        >
+          <h3>{{ section.title }}</h3>
+          <p v-if="section.text">{{ section.text }}</p>
+          <ul v-if="section.items">
+            <li v-for="item in section.items" :key="item">{{ item }}</li>
+          </ul>
+        </div>
+        <div class="quick-modal-actions">
+          <button type="button" class="btn btn-ghost" @click="closeQuickModal">
+            Cerrar
+          </button>
+          <router-link
+            class="btn btn-primary"
+            :to="activeQuickModal.path"
+            @click="closeQuickModal"
+          >
+            Ir
+          </router-link>
+        </div>
       </div>
-      <router-link class="btn btn-ghost" to="/dashboard/configuracion"
-        >Ver configuración</router-link
-      >
-    </section>
+    </BaseModal>
   </div>
 </template>
 <script setup>
+import { ref } from "vue";
+import BaseModal from "../components/common/BaseModal.vue";
+
+const activeQuickModal = ref(null);
+
+const openQuickModal = (item) => {
+  activeQuickModal.value = item.modal;
+};
+
+const closeQuickModal = () => {
+  activeQuickModal.value = null;
+};
+
 const flow = [
   { name: "PZEM", detail: "Mide", icon: "◉" },
   { name: "ESP32", detail: "Procesa", icon: "⌁" },
@@ -152,12 +194,55 @@ const quickLinks = [
     label: "Tiempo real",
     description: "Estado actual",
     icon: "⌁",
+    modal: {
+      title: "¿Cómo funciona el monitoreo en tiempo real?",
+      path: "/dashboard/tiempo-real",
+      intro:
+        "Consulta las mediciones eléctricas de tu hogar y observa cómo cambian con el tiempo.",
+      sections: [
+        {
+          title: "¿Para qué sirven los filtros?",
+          items: [
+            "Panel: selecciona el panel eléctrico que deseas consultar.",
+            "Circuito: elige un circuito, o compara los circuitos del panel seleccionado.",
+            "Mostrar últimos: selecciona los últimos 1, 2 o 5 minutos para consultar las mediciones de ese periodo.",
+          ],
+        },
+        {
+          title: "¿Qué puedes visualizar?",
+          text:
+            "Consulta el voltaje (V), la corriente (A), la potencia (W), el factor de potencia (FP) y la energía consumida (kWh) de cada circuito. Las mediciones y las gráficas se actualizan a medida que llegan nuevos datos.",
+        },
+      ],
+    },
   },
   {
     path: "/dashboard/resumen",
     label: "Resumen",
     description: "Indicadores",
     icon: "◒",
+    modal: {
+      title: "¿Cómo funciona el resumen?",
+      path: "/dashboard/resumen",
+      intro:
+        "Consulta los indicadores de consumo de tu sistema eléctrico para conocer cuánto voltaje (V), corriente (A), potencia (W), factor de potencia (FP) o energía consumida (kWh) se ha utilizado y cómo se distribuye durante el periodo seleccionado.",
+      sections: [
+        {
+          title: "¿Para qué sirven los filtros?",
+          items: [
+            "Panel: selecciona el panel eléctrico que quieres visualizar.",
+            "Circuito: elige un circuito, o Circuitos juntos para comparar sus consumos.",
+            "Período: selecciona Día, Semana o Mes para consultar la información.",
+            "Fecha: elige el día, la semana o el mes según el periodo seleccionado.",
+          ],
+        },
+        {
+          title: "¿Qué puedes visualizar?",
+          text:
+            "Consulta el consumo acumulado, la energía inicial y el día de mayor consumo. También puedes observar la gráfica para comparar el consumo de energía entre los días del periodo elegido y cambiar los filtros en cualquier momento.",
+        },
+      ],
+    },
   },
   {
     path: "/dashboard/alertas",
@@ -170,18 +255,59 @@ const quickLinks = [
     label: "Historial",
     description: "Mediciones guardadas",
     icon: "◷",
+    modal: {
+      title: "¿Cómo funciona el historial?",
+      path: "/dashboard/historial",
+      intro:
+        "Consulta las mediciones guardadas de tu sistema eléctrico y revisa cómo ha cambiado el consumo a lo largo del tiempo.",
+      sections: [
+        {
+          title: "¿Para qué sirven los filtros?",
+          items: [
+            "Panel: selecciona el panel eléctrico que quieres consultar.",
+            "Circuito: elige Cocina, Sala o Circuitos juntos para comparar sus mediciones.",
+            "Variable: escoge voltaje (V), corriente (A), potencia (W), factor de potencia (FP) o energía consumida (kWh).",
+            "Fecha inicial y final: selecciona el periodo que deseas consultar.",
+            "Mostrar por: organiza el detalle de las mediciones por hora o por día.",
+          ],
+        },
+        {
+          title: "¿Qué puedes visualizar?",
+          text:
+            "Observa las mediciones en la gráfica y consulta los valores detallados en la tabla inferior. También puedes desplazarte horizontalmente en la gráfica para revisar otros momentos del periodo seleccionado.",
+        },
+      ],
+    },
   },
   {
     path: "/dashboard/dispositivos",
     label: "Dispositivos",
     description: "Paneles y circuitos",
     icon: "⌗",
-  },
-  {
-    path: "/dashboard/configuracion",
-    label: "Configuración",
-    description: "Tu perfil",
-    icon: "⚙",
+    modal: {
+      title: "Dispositivos y estructura",
+      path: "/dashboard/dispositivos",
+      intro:
+        "Aquí puedes organizar tu vivienda y administrar sus paneles, dispositivos ESP32 y circuitos eléctricos.",
+      sections: [
+        {
+          title: "¿Qué puedes hacer?",
+          items: [
+            "Agregar un predio: registra una vivienda en el sistema.",
+            "Vincular dispositivo: conecta un dispositivo ESP32 a tu sistema.",
+            "Agregar panel principal o secundario: organiza los paneles eléctricos de tu vivienda.",
+            "Renombrar: cambia el nombre de un predio, panel, dispositivo o circuito.",
+            "Mover: cambia el panel al que está asignado un dispositivo.",
+            "Eliminar: quita un elemento del sistema.",
+          ],
+        },
+        {
+          title: "¿Cómo se organiza?",
+          text:
+            "La estructura funciona de forma jerárquica: Predio → Panel eléctrico → Dispositivo ESP32 → Circuitos. Así puedes identificar dónde está cada dispositivo y qué circuitos eléctricos monitorea. Consejo: antes de eliminar un elemento, verifica que ya no lo necesites en tu sistema.",
+        },
+      ],
+    },
   },
 ];
 </script>
@@ -476,35 +602,41 @@ const quickLinks = [
   font-size: 18px;
 }
 
-.guide {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 18px 22px;
-}
-
-.guide-number {
-  font: 700 29px var(--font-display);
-  color: rgba(113, 173, 255, 0.45);
-}
-
-.guide h3 {
-  color: #c8ddfb;
-  font-size: 16px;
-  margin-top: 6px;
-}
-
-.guide p {
-  font-size: 13px;
+.quick-modal-content {
   color: var(--color-muted);
-  line-height: 1.5;
-  margin-top: 6px;
-  max-width: 650px;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
-.guide .btn {
-  margin-left: auto;
-  white-space: nowrap;
+.quick-modal-intro,
+.quick-modal-section p {
+  margin: 0;
+}
+
+.quick-modal-section {
+  margin-top: 18px;
+}
+
+.quick-modal-section h3 {
+  color: #c8ddfb;
+  font-size: 14px;
+  margin-bottom: 7px;
+}
+
+.quick-modal-section ul {
+  margin: 0;
+  padding-left: 19px;
+}
+
+.quick-modal-section li + li {
+  margin-top: 5px;
+}
+
+.quick-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
 }
 
 @media (max-width: 850px) {
@@ -575,14 +707,5 @@ const quickLinks = [
     grid-template-columns: 1fr;
   }
 
-  .guide {
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .guide .btn {
-    margin-left: 0;
-    width: 100%;
-  }
 }
 </style>
