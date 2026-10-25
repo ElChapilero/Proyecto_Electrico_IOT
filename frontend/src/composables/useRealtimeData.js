@@ -1,5 +1,6 @@
 import { ref } from "vue";
 import { tiempoRealApi } from "../services/tiempoRealApi";
+import { orderPanels, panelOptionLabel } from "../utils/panelOptions";
 
 const WINDOW_MINUTES = 5;
 export const realtimeMetrics = [
@@ -98,7 +99,7 @@ export function useRealtimeData(predioId) {
     try {
       const panelList = await tiempoRealApi.listarPaneles(propertyId);
       if (version !== requestVersion) return;
-      panels.value = Array.isArray(panelList) ? panelList : [];
+      panels.value = orderPanels(Array.isArray(panelList) ? panelList : []);
       const built = [];
       for (const panel of panels.value) {
         const devices = await tiempoRealApi.listarDispositivos(panel.id);
@@ -221,7 +222,7 @@ export function useRealtimeData(predioId) {
   };
 }
 export function panelLabel(panel) {
-  return `${panel.nombre} · ${panel.tipo_panel === "Secundario" ? "Panel secundario" : "Panel principal"}`;
+  return panelOptionLabel(panel);
 }
 export function formatMetric(value, decimals) {
   return value === null || value === undefined || Number.isNaN(Number(value))

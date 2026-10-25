@@ -98,7 +98,8 @@ async function aggregate(filters, from, to, period) {
 async function historyHourly(filters, from, to, limit) {
   const scope = scopeWhere(filters);
   const r = await pool.query(
-    `SELECT h.*, c.indice AS circuito, d.id AS dispositivo_id, p.id AS panel_id
+    `SELECT h.*, c.indice AS circuito, c.nombre AS circuito_nombre,
+            d.id AS dispositivo_id, p.id AS panel_id, p.nombre AS panel_nombre
      FROM mediciones_horarias h
      JOIN circuitos c ON c.id = h.circuito_id
      ${SCOPE_JOINS}

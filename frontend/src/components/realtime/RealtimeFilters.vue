@@ -8,7 +8,7 @@
         Comparar todos los paneles
       </option>
       <option v-for="panel in panels" :key="panel.id" :value="panel.id">
-        {{ panelLabel(panel) }}
+        {{ panelOptionLabel(panel) }}
       </option></BaseSelect
     ><BaseSelect
       label="Circuito"
@@ -46,7 +46,7 @@
 </template>
 <script setup>
 import BaseSelect from "../common/BaseSelect.vue";
-import { panelLabel } from "../../composables/useRealtimeData";
+import { panelOptionLabel } from "../../utils/panelOptions";
 defineProps({
   panels: Array,
   canComparePanels: Boolean,

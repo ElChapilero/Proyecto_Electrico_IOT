@@ -30,4 +30,13 @@ export const tiempoRealApi = {
     const response = await http.get(`/predios/${predioId}/analitica/circuitos/comparacion?${params}`);
     return Array.isArray(response) ? response : Array.isArray(response?.data) ? response.data : [];
   },
+  historial: async (predioId, { from, to, panelId, circuitId, limit = 5000 }) => {
+    const params = new URLSearchParams({ granularity: "hour", limit: String(limit) });
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    if (panelId) params.set("panelId", panelId);
+    if (circuitId) params.set("circuitId", circuitId);
+    const response = await http.get(`/predios/${predioId}/analitica/history?${params}`);
+    return Array.isArray(response?.data) ? response.data : [];
+  },
 };
