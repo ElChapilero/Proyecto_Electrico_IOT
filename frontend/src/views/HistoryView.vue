@@ -440,10 +440,10 @@ async function loadAll() {
 }
 function setDefaultDates() {
   const end = new Date();
-  const start = new Date(end.getTime() - 7 * 86400000);
-  fromDate.value = dateOnly(start);
+  const today = dateOnly(end);
+  fromDate.value = today;
   toDate.value = dateOnly(end);
-  tableMode.value = "hour";
+  tableMode.value = "day";
 }
 watch(
   () => predio.predioId.value,

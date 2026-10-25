@@ -253,7 +253,6 @@ function hideTooltip() {
 .y-axis {
   width: 82px;
   height: 390px;
-  background: #1e2d40;
 }
 .chart-scroller {
   min-width: 0;
@@ -290,8 +289,11 @@ function hideTooltip() {
 }
 .bar {
   cursor: pointer;
-  opacity: 0.88;
+  opacity: 0.9;
+  stroke: #fff;
+  stroke-width: 1.5;
   rx: 3;
+  filter: drop-shadow(0 0 4px currentColor);
 }
 .bar:hover,
 .bar:focus {

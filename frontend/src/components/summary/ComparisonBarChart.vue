@@ -97,12 +97,16 @@
       </div>
     </div>
     <footer v-if="bars.length" class="chart-footer">
-      <span
-        ><i class="legend-sample filled" :style="{ background: color }"></i
-        >Valores comparados</span
-      ><span
-        ><i class="legend-sample outline" :style="{ borderColor: color }"></i
-        >Patrones por entidad</span
+      <span v-for="bar in bars" :key="`legend-${bar.key}`">
+        <i
+          class="legend-sample"
+          :style="{
+            background: bar.fill,
+            borderColor: color,
+            borderStyle: bar.dash ? 'dashed' : 'solid',
+          }"
+        ></i
+        >{{ bar.label }}</span
       >
     </footer>
   </article>
@@ -125,11 +129,19 @@ const chartWrap = ref(null);
 const tooltip = ref(null);
 const validRows = computed(() =>
   props.rows
-    .map((row, index) => ({
-      ...row,
-      value: Number(row[props.valueKey]),
-      index,
-    }))
+    .map((row, index) => {
+      const nombre =
+        row.nombre ||
+        (props.entityLabel === "panel"
+          ? row.panel_nombre
+          : row.circuito_nombre || `Circuito ${row.circuito}`);
+      return {
+        ...row,
+        nombre: nombre || "Sin nombre",
+        value: Number(row[props.valueKey]),
+        index,
+      };
+    })
     .filter((row) => Number.isFinite(row.value)),
 );
 const maxValue = computed(() =>
@@ -146,10 +158,7 @@ const bars = computed(() => {
   const width = Math.min(76, Math.max(18, step * 0.58));
   return validRows.value.map((row, index) => {
     const height = maxValue.value > 0 ? (row.value / maxValue.value) * 255 : 0;
-    const label =
-      props.entityLabel === "panel"
-        ? row.panel_nombre
-        : row.circuito_nombre || `Circuito ${row.circuito}`;
+    const label = row.nombre;
     return {
       ...row,
       key: `${label}-${index}`,
@@ -254,13 +263,15 @@ function hideTooltip() {
 .bar {
   cursor: pointer;
   opacity: 0.9;
-  stroke-width: 3;
-  rx: 4;
+  stroke: #fff;
+  stroke-width: 1.5;
+  rx: 3;
+  filter: drop-shadow(0 0 4px currentColor);
 }
 .bar:hover,
 .bar:focus {
   opacity: 1;
-  stroke-width: 4;
+  stroke-width: 2.5;
   outline: none;
 }
 .chart-tooltip {

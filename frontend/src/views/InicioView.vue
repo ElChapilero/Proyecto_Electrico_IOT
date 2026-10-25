@@ -5,23 +5,22 @@
         <span class="eyebrow">Bienvenido a Vatio</span>
         <h2>Tu energía, más clara y conectada.</h2>
         <p>
-          Monitorea el comportamiento eléctrico de tus predios desde un solo
-          lugar, con información preparada para crecer junto con tu sistema IoT.
+          Monitorea el comportamiento eléctrico de tu hogar
+          y conoce mejor el consumo de tus circuitos eléctricos.
         </p>
         <router-link class="btn btn-primary" to="/dashboard/tiempo-real"
           >Ver tiempo real</router-link
         >
       </div>
       <div class="hero-orbit" aria-hidden="true">
-        <span>⚡</span><i></i><b></b>
+        <span>🗲</span><i></i><b></b>
       </div>
     </section>
     <section class="section-heading">
       <div>
         <span class="eyebrow">Cómo funciona</span>
-        <h3>Del sensor a tu pantalla</h3>
+        <h3>Del sensor a la pantalla</h3>
       </div>
-      <p>Una cadena segura para convertir mediciones en decisiones.</p>
     </section>
     <section class="flow page-card">
       <div v-for="(step, index) in flow" :key="step.name" class="flow-step">
@@ -36,10 +35,6 @@
         <span class="eyebrow">Lecturas del sistema</span>
         <h3>Variables eléctricas</h3>
       </div>
-      <p>
-        Conoce los valores que describen el comportamiento de la electricidad
-        en tu hogar.
-      </p>
     </section>
     <section class="variables-intro page-card">
       <p>
@@ -282,7 +277,7 @@ const quickLinks = [
   {
     path: "/dashboard/dispositivos",
     label: "Dispositivos",
-    description: "Paneles y circuitos",
+    description: "Vinculacion y Estructura",
     icon: "⌗",
     modal: {
       title: "Dispositivos y estructura",

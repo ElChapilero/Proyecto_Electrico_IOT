@@ -4,7 +4,7 @@
     <div class="main">
       <header class="topbar">
         <div class="brand">
-          <span class="brand-mark">◌</span><span>Vatio</span>
+          <span class="brand-mark">🗲</span><span>Vatio</span>
         </div>
         <nav class="top-nav desktop-only" aria-label="Navegación principal">
           <router-link
