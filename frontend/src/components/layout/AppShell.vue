@@ -32,10 +32,18 @@
               <span class="menu-chevron" aria-hidden="true">⌄</span>
             </button>
             <div v-if="menuOpen" class="user-dropdown" role="menu">
-              <router-link to="/dashboard/perfil" role="menuitem" @click="closeMenu">
+              <router-link
+                to="/dashboard/perfil"
+                role="menuitem"
+                @click="closeMenu"
+              >
                 <span>◉</span> Mi perfil
               </router-link>
-              <router-link to="/dashboard/accesos" role="menuitem" @click="closeMenu">
+              <router-link
+                to="/dashboard/accesos"
+                role="menuitem"
+                @click="closeMenu"
+              >
                 <span>♧</span> Accesos y roles
               </router-link>
               <div class="menu-divider" />
@@ -88,7 +96,8 @@ function closeMenu() {
   menuOpen.value = false;
 }
 function handleDocumentClick(event) {
-  if (userMenuRef.value && !userMenuRef.value.contains(event.target)) closeMenu();
+  if (userMenuRef.value && !userMenuRef.value.contains(event.target))
+    closeMenu();
 }
 function handleEscape(event) {
   if (event.key === "Escape") closeMenu();

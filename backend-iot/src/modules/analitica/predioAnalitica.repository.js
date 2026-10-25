@@ -132,12 +132,12 @@ async function statistics(filters, from, to) {
   return r.rows[0];
 }
 
-function resumenMediciones(filters, from, to, period) {
+function resumenMediciones(filters, from, to, period, mainPanelsOnly = false) {
   const scope = scopeWhere(filters);
   const fromPosition = scope.params.length + 1;
   const toPosition = scope.params.length + 2;
   const periodPosition = scope.params.length + 3;
-  const where = `${scope.where}
+  const where = `${scope.where}${mainPanelsOnly ? " AND p.tipo_panel = 'Principal'" : ""}
        AND h.fecha_hora >= COALESCE($${fromPosition}::timestamptz,
          date_trunc($${periodPosition}, now() AT TIME ZONE 'America/Bogota') AT TIME ZONE 'America/Bogota')
        AND h.fecha_hora <= COALESCE($${toPosition}::timestamptz, now())`;
@@ -183,7 +183,7 @@ function resumenMediciones(filters, from, to, period) {
 }
 
 async function comparePanels(filters, from, to, period) {
-  const resumen = resumenMediciones(filters, from, to, period);
+  const resumen = resumenMediciones(filters, from, to, period, true);
   const r = await pool.query(
     `${resumen.sql}
       , comparacion AS (

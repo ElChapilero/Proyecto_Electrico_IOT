@@ -86,6 +86,7 @@ export function useRealtimeData(predioId) {
   const loading = ref(false);
   const loadError = ref("");
   const panels = ref([]);
+  const panelsWithDevices = ref([]);
   const records = ref([]);
   let requestVersion = 0;
   let refreshing = false;
@@ -96,13 +97,20 @@ export function useRealtimeData(predioId) {
     loading.value = true;
     loadError.value = "";
     records.value = [];
+    panelsWithDevices.value = [];
     try {
       const panelList = await tiempoRealApi.listarPaneles(propertyId);
       if (version !== requestVersion) return;
       panels.value = orderPanels(Array.isArray(panelList) ? panelList : []);
+      const devicePanels = [];
       const built = [];
       for (const panel of panels.value) {
         const devices = await tiempoRealApi.listarDispositivos(panel.id);
+        if (
+          Array.isArray(devices) &&
+          devices.some((device) => device.uuid_esp32)
+        )
+          devicePanels.push(panel);
         for (const device of Array.isArray(devices) ? devices : []) {
           const circuits = await tiempoRealApi.listarCircuitos(device.id);
           for (const circuit of Array.isArray(circuits) ? circuits : []) {
@@ -120,7 +128,10 @@ export function useRealtimeData(predioId) {
           }
         }
       }
-      if (version === requestVersion) records.value = built;
+      if (version === requestVersion) {
+        records.value = built;
+        panelsWithDevices.value = devicePanels;
+      }
     } catch {
       if (version === requestVersion)
         loadError.value =
@@ -213,6 +224,7 @@ export function useRealtimeData(predioId) {
     loading,
     loadError,
     panels,
+    panelsWithDevices,
     records,
     loadData,
     refreshMeasurements,
