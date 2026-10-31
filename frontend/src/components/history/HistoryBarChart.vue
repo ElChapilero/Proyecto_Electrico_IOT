@@ -24,11 +24,10 @@
           </text>
         </g>
       </svg>
-      <div class="chart-scroller">
-        <div class="chart-canvas" :style="{ width: `${canvasWidth}px` }">
-          <svg
+      <div class="chart-viewport">
+        <svg
             class="chart"
-            :viewBox="`0 0 ${canvasWidth} 390`"
+            viewBox="0 0 980 390"
             role="img"
             :aria-label="`${title} histórica`"
           >
@@ -88,12 +87,8 @@
                 {{ tick.label }}
               </text>
             </g>
-          </svg>
-        </div>
+        </svg>
       </div>
-    </div>
-    <div v-if="validPoints.length > 30" class="chart-footer">
-      Desplaza horizontalmente para visualizar las demás horas.
     </div>
     <div
       v-if="tooltip"
@@ -140,9 +135,7 @@ const validPoints = computed(() =>
       Number.isFinite(new Date(point.fecha_hora).getTime()),
   ),
 );
-const canvasWidth = computed(
-  () => 980 * Math.max(1, Math.ceil(validPoints.value.length / 30)),
-);
+const BASE_CHART_WIDTH = 980;
 const chartWrap = ref(null);
 const tooltip = ref(null);
 const selectedCircuitKey = ref(null);
@@ -171,7 +164,8 @@ const ticks = computed(() =>
   })),
 );
 const plottedPoints = computed(() => {
-  const step = (canvasWidth.value - 24) / Math.max(1, validPoints.value.length);
+  const step =
+    (BASE_CHART_WIDTH - 24) / Math.max(1, validPoints.value.length);
   const width = Math.min(76, Math.max(18, step * 0.62));
   return validPoints.value.map((point, index) => {
     const value = Number(point[dataKey.value]);
@@ -285,20 +279,15 @@ watch(
   width: 82px;
   height: 390px;
 }
-.chart-scroller {
+.chart-viewport {
   min-width: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
   padding-bottom: 8px;
-}
-.chart-canvas {
-  min-width: 980px;
-  height: 390px;
 }
 .chart {
   display: block;
   width: 100%;
-  height: 390px;
+  height: auto;
+  aspect-ratio: 980 / 390;
 }
 .grid-lines line {
   stroke: var(--chart-grid);

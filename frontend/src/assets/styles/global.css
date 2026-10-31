@@ -172,6 +172,20 @@ a {
   border-color: var(--color-primary);
   outline: 2px solid var(--color-primary-soft);
 }
+.field input[type="date"],
+.field input[type="week"],
+.field input[type="month"] {
+  cursor: pointer;
+  user-select: none;
+  color-scheme: dark;
+}
+.field input[type="date"]::-webkit-calendar-picker-indicator,
+.field input[type="week"]::-webkit-calendar-picker-indicator,
+.field input[type="month"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: brightness(0) invert(1);
+  opacity: 1;
+}
 .btn {
   display: inline-flex;
   align-items: center;

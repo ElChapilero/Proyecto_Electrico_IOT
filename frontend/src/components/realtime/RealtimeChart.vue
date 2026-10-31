@@ -2,13 +2,13 @@
   <article class="chart-card page-card chart-card-base">
     <header class="chart-header chart-header-base">
       <div>
-        <span class="eyebrow">Lecturas reales · últimos minutos</span>
+        <span class="eyebrow">{{ eyebrow }}</span>
         <h3>{{ title }}</h3>
       </div>
       <span class="chart-unit-base">{{ unit }}</span>
     </header>
     <div v-if="!hasData" class="chart-empty">
-      Todavía no hay mediciones para mostrar en este rango.
+      {{ emptyMessage }}
     </div>
     <div v-else ref="chartWrap" class="chart-wrap">
       <svg
@@ -192,6 +192,14 @@ const props = defineProps({
   color: { type: String, required: true },
   explanation: { type: String, required: true },
   series: { type: Array, default: () => [] },
+  eyebrow: { type: String, default: "Lecturas reales · últimos minutos" },
+  emptyMessage: {
+    type: String,
+    default: "Todavía no hay mediciones para mostrar en este rango.",
+  },
+  gapThresholdMs: { type: Number, default: 15000 },
+  timeTickFormat: { type: String, default: "time" },
+  timeTickCount: { type: Number, default: 2 },
 });
 const chartWrap = ref(null);
 const tooltip = ref(null);
@@ -264,7 +272,6 @@ const yTicks = computed(() => {
     };
   });
 });
-const GAP_THRESHOLD_MS = 15000;
 const normalizedSeries = computed(() => {
   const span = Math.max(1, maxTime.value - minTime.value);
   const valueSpan = Math.max(0.000001, maxValue.value - minValue.value);
@@ -297,7 +304,7 @@ const normalizedSeries = computed(() => {
         const previous = dots[pointIndex - 1];
         if (
           previous &&
-          new Date(point.time) - new Date(previous.time) > GAP_THRESHOLD_MS
+          new Date(point.time) - new Date(previous.time) > props.gapThresholdMs
         ) {
           if (current.length) segments.push(current.join(" "));
           current = [];
@@ -342,18 +349,36 @@ watch(
 );
 const timeTicks = computed(() => {
   const points = normalizedSeries.value[0]?.dots || [];
-  const visible =
-    points.length > 1 ? [points[0], points[points.length - 1]] : points;
-  return visible.map((point) => {
+  if (!points.length) return [];
+  const count = Math.max(2, Math.min(props.timeTickCount, points.length));
+  const visible = Array.from({ length: count }, (_, index) => {
+    const pointIndex = Math.round(
+      (index * (points.length - 1)) / Math.max(1, count - 1),
+    );
+    return points[pointIndex];
+  }).filter((point, index, list) => list.indexOf(point) === index);
+  const ticks = visible.map((point) => {
     const time = new Date(point.time);
-    const label = new Intl.DateTimeFormat("es-CO", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-    }).format(time);
+    const label = new Intl.DateTimeFormat(
+      "es-CO",
+      props.timeTickFormat === "day-month"
+        ? { day: "2-digit", month: "2-digit", timeZone: "America/Bogota" }
+        : {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+          },
+    ).format(time);
     return { key: `time-${point.key}`, x: point.x, label };
   });
+  if (props.timeTickFormat !== "day-month") return ticks;
+  return ticks.filter(
+    (tick, index, list) =>
+      index === 0 ||
+      index === list.length - 1 ||
+      list.findIndex((candidate) => candidate.label === tick.label) === index,
+  );
 });
 function showTooltip(event, series, point) {
   const target = event.currentTarget;

@@ -3,7 +3,7 @@
     <header>
       <div>
         <span class="eyebrow">Distribución por {{ entityLabel }}</span>
-        <h3>Participación del consumo</h3>
+        <h3>Porcentaje del consumo Energetico</h3>
       </div>
     </header>
     <div v-if="!items.length" class="empty">

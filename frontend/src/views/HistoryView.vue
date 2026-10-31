@@ -65,21 +65,18 @@
           ><input v-model="toDate" type="date" @change="loadHistory"
         /></label>
       </section>
-      <LoadingState
-        v-if="loadingHistory"
-        message="Consultando mediciones horarias…"
-      />
       <ErrorState
-        v-else-if="historyError"
+        v-if="historyError"
         :message="historyError"
         retry
         @retry="loadHistory"
       />
-      <HistoryCharts
-        v-else
-        :points="historyRows"
-        :variable="selectedVariable"
-      />
+      <div v-else class="history-result" :class="{ 'is-loading': loadingHistory }">
+        <HistoryCharts
+          :points="historyRows"
+          :variable="selectedVariable"
+        />
+      </div>
       <section class="table-filters page-card">
         <div>
           <span class="eyebrow">Filtros de tabla</span>
@@ -147,7 +144,7 @@ import BaseSelect from "../components/common/BaseSelect.vue";
 import EmptyState from "../components/common/EmptyState.vue";
 import ErrorState from "../components/common/ErrorState.vue";
 import LoadingState from "../components/common/LoadingState.vue";
-import HistoryCharts from "../components/history/HistoryBarChart.vue";
+import HistoryCharts from "../components/history/HistoryCharts.vue";
 import { tiempoRealApi } from "../services/tiempoRealApi";
 import { usePredioStore } from "../stores/predioStore";
 import { orderPanels, panelOptionLabel } from "../utils/panelOptions";
@@ -170,6 +167,7 @@ const loadingStructure = ref(false);
 const loadingHistory = ref(false);
 const loadError = ref("");
 const historyError = ref("");
+let historyRequestId = 0;
 const variables = [
   { key: "voltaje", label: "Voltaje" },
   { key: "corriente", label: "Corriente" },
@@ -387,6 +385,7 @@ async function loadHistory() {
     !toDate.value
   )
     return;
+  const requestId = ++historyRequestId;
   loadingHistory.value = true;
   historyError.value = "";
   try {
@@ -403,35 +402,39 @@ async function loadHistory() {
           }),
         ),
       );
-      historyRows.value = aggregateHourly(
+      const nextRows = aggregateHourly(
         responses.flat(),
         "Paneles Juntos",
         "Circuitos Juntos",
       );
+      if (requestId === historyRequestId) historyRows.value = nextRows;
     } else if (selectedCircuitId.value === COMBINED_CIRCUITS) {
       const rows = await tiempoRealApi.historial(predio.predioId.value, {
         ...options,
         panelId: selectedPanelId.value,
       });
-      historyRows.value = aggregateHourly(
+      const nextRows = aggregateHourly(
         rows,
         panels.value.find(
           (panel) => String(panel.id) === String(selectedPanelId.value),
         )?.nombre || "Panel",
         "Circuitos Juntos",
       );
+      if (requestId === historyRequestId) historyRows.value = nextRows;
     } else {
-      historyRows.value = await tiempoRealApi.historial(predio.predioId.value, {
+      const nextRows = await tiempoRealApi.historial(predio.predioId.value, {
         ...options,
         panelId: selectedPanelId.value,
         circuitId: selectedCircuitId.value,
       });
+      if (requestId === historyRequestId) historyRows.value = nextRows;
     }
   } catch (error) {
-    historyError.value = error.message || "No se pudo cargar el historial.";
-    historyRows.value = [];
+    if (requestId === historyRequestId) {
+      historyError.value = error.message || "No se pudo cargar el historial.";
+    }
   } finally {
-    loadingHistory.value = false;
+    if (requestId === historyRequestId) loadingHistory.value = false;
   }
 }
 async function loadAll() {
@@ -455,8 +458,9 @@ watch(
   },
 );
 watch(selectedPanelId, () => {
+  const wasCombined = selectedCircuitId.value === COMBINED_CIRCUITS;
   selectedCircuitId.value = COMBINED_CIRCUITS;
-  if (selectedPanelId.value) loadHistory();
+  if (wasCombined && selectedPanelId.value) loadHistory();
 });
 watch(selectedCircuitId, () => {
   if (selectedPanelId.value) loadHistory();
@@ -500,6 +504,10 @@ onMounted(async () => {
   grid-template-columns: repeat(5, minmax(150px, 1fr));
   gap: 12px;
   padding: 16px;
+}
+.history-result {
+  position: relative;
+  min-width: 0;
 }
 .table-filters {
   display: grid;
