@@ -3,7 +3,8 @@
     <article
       v-for="metric in metrics"
       :key="metric.key"
-      class="metric page-card"
+      class="metric-card-base page-card"
+      :style="{ '--metric-accent': metric.color || 'var(--color-primary)' }"
     >
       <span>{{ metric.label }}</span
       ><strong>{{
@@ -26,26 +27,6 @@ defineProps({
   grid-template-columns: repeat(5, 1fr);
   gap: 11px;
 }
-.metric {
-  display: grid;
-  gap: 7px;
-  text-align: center;
-  padding: 17px 10px;
-}
-.metric span {
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-}
-.metric strong {
-  font: 700 22px var(--font-display);
-  color: #fff;
-  overflow-wrap: anywhere;
-}
-.metric small {
-  color: #fff;
-  font-size: 13px;
-}
 @media (max-width: 900px) {
   .metrics {
     grid-template-columns: repeat(3, 1fr);
@@ -55,7 +36,7 @@ defineProps({
   .metrics {
     grid-template-columns: repeat(2, 1fr);
   }
-  .metric:last-child {
+  .metric-card-base:last-child {
     grid-column: 1/-1;
   }
 }

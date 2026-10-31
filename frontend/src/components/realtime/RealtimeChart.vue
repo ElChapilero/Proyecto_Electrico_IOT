@@ -1,11 +1,11 @@
 <template>
   <article class="chart-card page-card chart-card-base">
-    <header class="chart-header">
+    <header class="chart-header chart-header-base">
       <div>
         <span class="eyebrow">Lecturas reales · últimos minutos</span>
         <h3>{{ title }}</h3>
       </div>
-      <span class="unit chart-unit">{{ unit }}</span>
+      <span class="chart-unit-base">{{ unit }}</span>
     </header>
     <div v-if="!hasData" class="chart-empty">
       Todavía no hay mediciones para mostrar en este rango.
@@ -39,7 +39,15 @@
             {{ tick.label }}
           </text>
         </g>
-        <g v-for="series in normalizedSeries" :key="series.label">
+          <g
+            v-for="series in normalizedSeries"
+            :key="series.label"
+            class="series-group"
+            :class="{
+              'is-dimmed': selectedSeriesId && selectedSeriesId !== series.id,
+              'is-selected': selectedSeriesId === series.id,
+            }"
+          >
           <polyline
             v-for="(segment, segmentIndex) in series.segments"
             :key="`${series.label}-${segmentIndex}`"
@@ -55,6 +63,7 @@
               width="8"
               height="8"
               :fill="series.color"
+              :class="{ 'is-point-selected': selectedPointKey === point.key }"
               tabindex="0"
               :aria-label="`${series.label}: ${formatValue(point.value)} ${unit}, ${formatTime(point.time)}`"
               @mouseenter="showTooltip($event, series, point)"
@@ -62,11 +71,15 @@
               @focus="showTooltip($event, series, point)"
               @blur="hideTooltip"
               @touchstart.prevent="showTooltip($event, series, point)"
+              @click="togglePointSelection(series, point)"
+              @keydown.enter.prevent="togglePointSelection(series, point)"
+              @keydown.space.prevent="togglePointSelection(series, point)"
             />
             <polygon
               v-else-if="series.marker === 'diamond'"
               :points="`${point.x},${point.y - 5} ${point.x + 5},${point.y} ${point.x},${point.y + 5} ${point.x - 5},${point.y}`"
               :fill="series.color"
+              :class="{ 'is-point-selected': selectedPointKey === point.key }"
               tabindex="0"
               :aria-label="`${series.label}: ${formatValue(point.value)} ${unit}, ${formatTime(point.time)}`"
               @mouseenter="showTooltip($event, series, point)"
@@ -74,11 +87,15 @@
               @focus="showTooltip($event, series, point)"
               @blur="hideTooltip"
               @touchstart.prevent="showTooltip($event, series, point)"
+              @click="togglePointSelection(series, point)"
+              @keydown.enter.prevent="togglePointSelection(series, point)"
+              @keydown.space.prevent="togglePointSelection(series, point)"
             />
             <polygon
               v-else-if="series.marker === 'triangle'"
               :points="`${point.x},${point.y - 5} ${point.x + 5},${point.y + 4} ${point.x - 5},${point.y + 4}`"
               :fill="series.color"
+              :class="{ 'is-point-selected': selectedPointKey === point.key }"
               tabindex="0"
               :aria-label="`${series.label}: ${formatValue(point.value)} ${unit}, ${formatTime(point.time)}`"
               @mouseenter="showTooltip($event, series, point)"
@@ -86,6 +103,9 @@
               @focus="showTooltip($event, series, point)"
               @blur="hideTooltip"
               @touchstart.prevent="showTooltip($event, series, point)"
+              @click="togglePointSelection(series, point)"
+              @keydown.enter.prevent="togglePointSelection(series, point)"
+              @keydown.space.prevent="togglePointSelection(series, point)"
             />
             <circle
               v-else
@@ -93,6 +113,7 @@
               :cy="point.y"
               r="4"
               :fill="series.color"
+              :class="{ 'is-point-selected': selectedPointKey === point.key }"
               tabindex="0"
               :aria-label="`${series.label}: ${formatValue(point.value)} ${unit}, ${formatTime(point.time)}`"
               @mouseenter="showTooltip($event, series, point)"
@@ -100,6 +121,9 @@
               @focus="showTooltip($event, series, point)"
               @blur="hideTooltip"
               @touchstart.prevent="showTooltip($event, series, point)"
+              @click="togglePointSelection(series, point)"
+              @keydown.enter.prevent="togglePointSelection(series, point)"
+              @keydown.space.prevent="togglePointSelection(series, point)"
             />
           </template>
         </g>
@@ -137,7 +161,7 @@
       </div>
     </div>
     <p class="explanation">{{ explanation }}</p>
-    <div v-if="hasData" class="legend">
+  <div v-if="hasData" class="legend">
       <span v-for="series in normalizedSeries" :key="series.label"
         ><i
           class="legend-marker"
@@ -156,7 +180,11 @@
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
+import {
+  comparisonColor,
+  comparisonMarkers,
+} from "../../utils/chartVisuals";
 
 const props = defineProps({
   title: { type: String, required: true },
@@ -167,6 +195,8 @@ const props = defineProps({
 });
 const chartWrap = ref(null);
 const tooltip = ref(null);
+const selectedSeriesId = ref(null);
+const selectedPointKey = ref(null);
 const hasData = computed(() =>
   props.series.some((series) => series.points?.length),
 );
@@ -235,22 +265,6 @@ const yTicks = computed(() => {
   });
 });
 const GAP_THRESHOLD_MS = 15000;
-function stableHash(value) {
-  return String(value || "")
-    .split("")
-    .reduce(
-      (hash, character) => (hash * 31 + character.charCodeAt(0)) >>> 0,
-      7,
-    );
-}
-function comparisonColor(hex, variant) {
-  const normalized = hex.replace("#", "");
-  const red = parseInt(normalized.slice(0, 2), 16);
-  const green = parseInt(normalized.slice(2, 4), 16);
-  const blue = parseInt(normalized.slice(4, 6), 16);
-  const mix = Math.min(0.62, variant * 0.28);
-  return `rgb(${Math.round(red + (255 - red) * mix)}, ${Math.round(green + (255 - green) * mix)}, ${Math.round(blue + (255 - blue) * mix)})`;
-}
 const normalizedSeries = computed(() => {
   const span = Math.max(1, maxTime.value - minTime.value);
   const valueSpan = Math.max(0.000001, maxValue.value - minValue.value);
@@ -258,7 +272,6 @@ const normalizedSeries = computed(() => {
   const styleOrder = props.series
     .map((series) => String(series.id || series.label))
     .sort();
-  const markers = ["circle", "square", "diamond", "triangle"];
   return props.series
     .map((series, index) => {
       const points = [...(series.points || [])].sort(
@@ -294,18 +307,39 @@ const normalizedSeries = computed(() => {
       if (current.length) segments.push(current.join(" "));
       const styleIndex = styleOrder.indexOf(String(series.id || series.label));
       return {
+        id: String(series.id || series.label),
         label: series.label,
         color: comparison
           ? comparisonColor(props.color, styleIndex % 3)
           : props.color,
         dashed: comparison && styleIndex % 2 === 1,
-        marker: comparison ? markers[styleIndex % markers.length] : "circle",
+        marker: comparison
+          ? comparisonMarkers[styleIndex % comparisonMarkers.length]
+          : "circle",
         segments,
         dots,
       };
     })
     .filter((series) => series.dots.length);
 });
+function togglePointSelection(series, point) {
+  const seriesId = series.id;
+  const pointKey = point.key;
+  if (selectedPointKey.value === pointKey) {
+    selectedSeriesId.value = null;
+    selectedPointKey.value = null;
+    return;
+  }
+  selectedSeriesId.value = seriesId;
+  selectedPointKey.value = pointKey;
+}
+watch(
+  () => props.series.map((series) => String(series.id || series.label)).join("|"),
+  () => {
+    selectedSeriesId.value = null;
+    selectedPointKey.value = null;
+  },
+);
 const timeTicks = computed(() => {
   const points = normalizedSeries.value[0]?.dots || [];
   const visible =
@@ -352,13 +386,6 @@ function hideTooltip() {
 .chart-card {
   padding: var(--chart-card-padding);
 }
-.chart-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: var(--chart-header-height);
-}
 .eyebrow {
   color: var(--color-primary);
   font-size: 13px;
@@ -370,18 +397,6 @@ function hideTooltip() {
   color: #e6f0fc;
   font-size: 18px;
   margin-top: 6px;
-}
-.unit {
-  min-height: var(--chart-unit-height);
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: var(--color-primary-soft);
-  color: #dceaff;
-  font-size: 13px;
-  font-weight: 700;
-  white-space: nowrap;
 }
 .chart-wrap {
   position: relative;
@@ -409,6 +424,15 @@ function hideTooltip() {
   stroke-linejoin: round;
   filter: drop-shadow(0 0 5px currentColor);
 }
+.series-group {
+  transition: opacity var(--transition);
+}
+.series-group.is-dimmed {
+  opacity: 0.28;
+}
+.series-group.is-selected {
+  opacity: 1;
+}
 .chart circle,
 .chart rect {
   cursor: pointer;
@@ -417,6 +441,10 @@ function hideTooltip() {
   transition:
     r var(--transition),
     transform var(--transition);
+}
+.chart .is-point-selected {
+  stroke-width: 3;
+  filter: drop-shadow(0 0 8px currentColor);
 }
 .chart circle:hover,
 .chart circle:focus {

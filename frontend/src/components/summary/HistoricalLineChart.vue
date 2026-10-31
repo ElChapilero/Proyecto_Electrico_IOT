@@ -1,11 +1,11 @@
 <template>
   <article class="history-chart page-card chart-card-base">
-    <header class="chart-header">
+    <header class="chart-header chart-header-base">
       <div>
         <span class="eyebrow">{{ periodLabel }}</span>
         <h3>{{ title }}</h3>
       </div>
-        <span class="unit chart-unit">{{ unit }}</span>
+        <span class="chart-unit-base">{{ unit }}</span>
     </header>
     <div v-if="!points.length" class="chart-empty">
       No hay mediciones para este periodo.
@@ -56,6 +56,10 @@
           :width="point.width"
           :height="point.height"
           :fill="color"
+          :class="{
+            'is-dimmed': selectedCircuitKey && selectedCircuitKey !== circuitKey(point),
+            'is-point-selected': selectedPointKey === point.key,
+          }"
           tabindex="0"
           :aria-label="`${title}: ${formatValue(point.value)} ${unit}, ${formatTooltipDate(point.time)}`"
           @mouseenter="showTooltip($event, point)"
@@ -63,6 +67,9 @@
           @focus="showTooltip($event, point)"
           @blur="hideTooltip"
           @touchstart.prevent="showTooltip($event, point)"
+          @click="togglePointSelection(point)"
+          @keydown.enter.prevent="togglePointSelection(point)"
+          @keydown.space.prevent="togglePointSelection(point)"
         />
         <g class="time-axis">
           <line
@@ -112,7 +119,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { chartTooltipPosition } from "../../utils/chartTooltip";
 
 const props = defineProps({
@@ -126,6 +133,17 @@ const props = defineProps({
 
 const chartWrap = ref(null);
 const tooltip = ref(null);
+const selectedCircuitKey = ref(null);
+const selectedPointKey = ref(null);
+function circuitKey(point) {
+  return String(
+    point.circuito_id ??
+      point.circuit_id ??
+      point.circuito ??
+      point.circuito_nombre ??
+      "default",
+  );
+}
 const periodLabel = computed(
   () =>
     ({ day: "24 horas", week: "Días de la semana", month: "Días del mes" })[
@@ -248,18 +266,28 @@ function showTooltip(event, point) {
 function hideTooltip() {
   tooltip.value = null;
 }
+function togglePointSelection(point) {
+  const key = circuitKey(point);
+  if (selectedPointKey.value === point.key) {
+    selectedCircuitKey.value = null;
+    selectedPointKey.value = null;
+    return;
+  }
+  selectedCircuitKey.value = key;
+  selectedPointKey.value = point.key;
+}
+watch(
+  () => props.points.map((point) => `${circuitKey(point)}-${point.time}`).join("|"),
+  () => {
+    selectedCircuitKey.value = null;
+    selectedPointKey.value = null;
+  },
+);
 </script>
 
 <style scoped>
 .history-chart {
   padding: var(--chart-card-padding);
-}
-.chart-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: var(--chart-header-height);
 }
 .eyebrow {
   color: var(--color-primary);
@@ -272,18 +300,6 @@ function hideTooltip() {
   color: #e6f0fc;
   font-size: 18px;
   margin-top: 6px;
-}
-.unit {
-  min-height: var(--chart-unit-height);
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: var(--color-primary-soft);
-  color: #dceaff;
-  font-size: 13px;
-  font-weight: 700;
-  white-space: nowrap;
 }
 .chart-wrap {
   position: relative;
@@ -315,6 +331,14 @@ function hideTooltip() {
   opacity: 1;
   stroke-width: 2.5;
   outline: none;
+}
+.chart .bar.is-dimmed {
+  opacity: 0.28;
+}
+.chart .bar.is-point-selected {
+  opacity: 1;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 8px currentColor);
 }
 .chart text {
   fill: #fff;

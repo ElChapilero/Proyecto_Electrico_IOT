@@ -1,11 +1,11 @@
 <template>
   <article class="comparison-chart page-card chart-card-base">
-    <header class="chart-header">
+    <header class="chart-header chart-header-base">
       <div>
         <span class="eyebrow">Comparación por {{ entityLabel }}</span>
         <h3>{{ title }}</h3>
       </div>
-      <span class="unit chart-unit">{{ unit }}</span>
+      <span class="chart-unit-base">{{ unit }}</span>
     </header>
     <div v-if="!bars.length" class="chart-empty">
       No hay datos comparables para este periodo.
@@ -18,16 +18,6 @@
         role="img"
         :aria-label="`${title} comparativo por ${entityLabel}`"
       >
-        <defs>
-          <pattern
-            id="comparison-dots"
-            width="8"
-            height="8"
-            patternUnits="userSpaceOnUse"
-          >
-            <circle cx="2" cy="2" r="1.6" :fill="color" />
-          </pattern>
-        </defs>
         <g class="grid-lines">
           <line
             v-for="tick in ticks"
@@ -49,23 +39,67 @@
             {{ tick.label }}
           </text>
         </g>
-        <g v-for="bar in bars" :key="bar.key">
+        <g
+          v-for="bar in bars"
+          :key="bar.key"
+          class="entity-group"
+          :class="{
+            'is-dimmed': selectedEntityKey && selectedEntityKey !== bar.entityKey,
+            'is-selected': selectedEntityKey === bar.entityKey,
+          }"
+        >
           <rect
             class="bar"
             :x="bar.x"
             :y="bar.y"
             :width="bar.width"
             :height="bar.height"
-            :fill="bar.fill"
-            :stroke="color"
-            :stroke-dasharray="bar.dash"
+            :fill="bar.color"
+            :stroke="bar.color"
             tabindex="0"
             :aria-label="`${bar.label}: ${formatValue(bar.value)} ${unit}`"
             @mouseenter="showTooltip($event, bar)"
             @mouseleave="hideTooltip"
             @focus="showTooltip($event, bar)"
+            @click="toggleEntitySelection(bar)"
+            @keydown.enter.prevent="toggleEntitySelection(bar)"
+            @keydown.space.prevent="toggleEntitySelection(bar)"
             @blur="hideTooltip"
           />
+          <g
+            class="bar-marker"
+            :transform="`translate(${bar.x + bar.width / 2}, ${markerY(bar)})`"
+            tabindex="0"
+            role="button"
+            :aria-label="`${bar.label}: seleccionar circuito`"
+            @mouseenter="showTooltip($event, bar)"
+            @mouseleave="hideTooltip"
+            @focus="showTooltip($event, bar)"
+            @blur="hideTooltip"
+            @click="toggleEntitySelection(bar)"
+            @keydown.enter.prevent="toggleEntitySelection(bar)"
+            @keydown.space.prevent="toggleEntitySelection(bar)"
+          >
+            <circle v-if="bar.marker === 'circle'" r="6" :fill="bar.color" />
+            <rect
+              v-else-if="bar.marker === 'square'"
+              x="-6"
+              y="-6"
+              width="12"
+              height="12"
+              :fill="bar.color"
+            />
+            <polygon
+              v-else-if="bar.marker === 'diamond'"
+              points="0,-7 7,0 0,7 -7,0"
+              :fill="bar.color"
+            />
+            <polygon
+              v-else
+              points="0,-7 7,6 -7,6"
+              :fill="bar.color"
+            />
+          </g>
           <text
             class="x-label"
             :x="bar.x + bar.width / 2"
@@ -97,13 +131,21 @@
       </div>
     </div>
     <footer v-if="bars.length" class="chart-footer">
-      <span v-for="bar in bars" :key="`legend-${bar.key}`">
+      <span
+        v-for="bar in bars"
+        :key="`legend-${bar.key}`"
+        class="legend-entry"
+        :class="{
+          'is-dimmed': selectedEntityKey && selectedEntityKey !== bar.entityKey,
+          'is-selected': selectedEntityKey === bar.entityKey,
+        }"
+      >
         <i
-          class="legend-sample"
+            class="chart-marker-base"
+            :class="bar.marker"
           :style="{
-            background: bar.fill,
-            borderColor: color,
-            borderStyle: bar.dash ? 'dashed' : 'solid',
+            background: bar.color,
+            borderColor: bar.color,
           }"
         ></i
         >{{ bar.label }}</span
@@ -113,8 +155,12 @@
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { chartTooltipPosition } from "../../utils/chartTooltip";
+import {
+  comparisonColor,
+  comparisonMarkers,
+} from "../../utils/chartVisuals";
 
 const props = defineProps({
   title: { type: String, required: true },
@@ -127,6 +173,18 @@ const props = defineProps({
 
 const chartWrap = ref(null);
 const tooltip = ref(null);
+const selectedEntityKey = ref(null);
+function entityKey(row, fallback = "") {
+  return String(
+    row.circuito_id ??
+      row.panel_id ??
+      row.circuito ??
+      row.panel ??
+      row.id ??
+      row.nombre ??
+      fallback,
+  );
+}
 const validRows = computed(() =>
   props.rows
     .map((row, index) => {
@@ -138,6 +196,7 @@ const validRows = computed(() =>
       return {
         ...row,
         nombre: nombre || "Sin nombre",
+        entityKey: entityKey(row, index),
         value: Number(row[props.valueKey]),
         index,
       };
@@ -168,16 +227,24 @@ const bars = computed(() => {
       y: 290 - height,
       width,
       height: Math.max(1, height),
-      fill:
-        index % 3 === 0
-          ? props.color
-          : index % 3 === 1
-            ? "transparent"
-            : "url(#comparison-dots)",
-      dash: index % 3 === 1 ? "8 6" : undefined,
+       color: comparisonColor(props.color, index % 3),
+       marker: comparisonMarkers[index % comparisonMarkers.length],
     };
   });
 });
+function markerY(bar) {
+  return Math.max(18, bar.y - 10);
+}
+function toggleEntitySelection(bar) {
+  selectedEntityKey.value =
+    selectedEntityKey.value === bar.entityKey ? null : bar.entityKey;
+}
+watch(
+  () => props.rows.map((row, index) => entityKey(row, index)).join("|"),
+  () => {
+    selectedEntityKey.value = null;
+  },
+);
 function formatValue(value) {
   return Number(value).toLocaleString("es-CO", { maximumFractionDigits: 2 });
 }
@@ -210,13 +277,6 @@ function hideTooltip() {
 .comparison-chart {
   padding: var(--chart-card-padding);
 }
-.chart-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: var(--chart-header-height);
-}
 .eyebrow {
   color: var(--color-primary);
   font-size: 13px;
@@ -227,18 +287,6 @@ function hideTooltip() {
   color: #e6f0fc;
   font-size: 18px;
   margin-top: 6px;
-}
-.unit {
-  min-height: var(--chart-unit-height);
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: var(--color-primary-soft);
-  color: #dceaff;
-  font-size: 13px;
-  font-weight: 700;
-  white-space: nowrap;
 }
 .chart-wrap {
   position: relative;
@@ -267,10 +315,45 @@ function hideTooltip() {
 .bar {
   cursor: pointer;
   opacity: 0.9;
-  stroke: #fff;
   stroke-width: 1.5;
   rx: 3;
   filter: drop-shadow(0 0 4px currentColor);
+}
+.bar-marker {
+  cursor: pointer;
+  outline: none;
+}
+.bar-marker circle,
+.bar-marker rect,
+.bar-marker polygon {
+  stroke: var(--chart-active);
+  stroke-width: 1.5;
+  paint-order: stroke;
+  filter: drop-shadow(0 0 4px currentColor);
+}
+.entity-group.is-selected .bar-marker circle,
+.entity-group.is-selected .bar-marker rect,
+.entity-group.is-selected .bar-marker polygon,
+.bar-marker:focus circle,
+.bar-marker:focus rect,
+.bar-marker:focus polygon {
+  stroke-width: 3;
+  filter: drop-shadow(0 0 8px currentColor);
+}
+.entity-group {
+  transition: opacity var(--transition);
+}
+.entity-group.is-dimmed,
+.legend-entry.is-dimmed {
+  opacity: 0.28;
+}
+.entity-group.is-selected,
+.legend-entry.is-selected {
+  opacity: 1;
+}
+.entity-group.is-selected .bar {
+  stroke-width: 3;
+  filter: drop-shadow(0 0 8px currentColor);
 }
 .bar:hover,
 .bar:focus {
@@ -324,16 +407,7 @@ function hideTooltip() {
   align-items: center;
   gap: 6px;
 }
-.legend-sample {
-  display: inline-block;
-  width: 18px;
-  height: 10px;
-  border: 2px solid;
-}
-.legend-sample.filled {
-  border-color: transparent;
-}
-.legend-sample.outline {
-  border-style: dashed;
+.legend-entry {
+  transition: opacity var(--transition);
 }
 </style>

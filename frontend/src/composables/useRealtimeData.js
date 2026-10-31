@@ -4,15 +4,16 @@ import { orderPanels, panelOptionLabel } from "../utils/panelOptions";
 
 const WINDOW_MINUTES = 5;
 export const realtimeMetrics = [
-  { key: "energia", label: "Energía", unit: "kWh", decimals: 3 },
-  { key: "potencia", label: "Potencia", unit: "W", decimals: 2 },
-  { key: "voltaje", label: "Voltaje", unit: "V", decimals: 2 },
-  { key: "corriente", label: "Corriente", unit: "A", decimals: 2 },
+  { key: "energia", label: "Energía", unit: "kWh", decimals: 3, color: "#39FF14" },
+  { key: "potencia", label: "Potencia", unit: "W", decimals: 2, color: "#DFFF00" },
+  { key: "voltaje", label: "Voltaje", unit: "V", decimals: 2, color: "#FF3131" },
+  { key: "corriente", label: "Corriente", unit: "A", decimals: 2, color: "#7B2CFF" },
   {
     key: "factor_potencia",
     label: "Factor de potencia",
     unit: "FP",
     decimals: 3,
+    color: "#FF6A00",
   },
 ];
 export const realtimeCharts = [

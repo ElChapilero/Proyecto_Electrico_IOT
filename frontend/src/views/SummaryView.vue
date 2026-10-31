@@ -732,27 +732,6 @@ onBeforeUnmount(() => clearInterval(refreshTimer));
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
-.metric-card {
-  min-height: 108px;
-  padding: 17px 18px;
-  display: grid;
-  align-content: center;
-  gap: 5px;
-  border-top: 3px solid var(--metric-accent);
-}
-.metric-card span {
-  color: #fff;
-  font-size: 13px;
-}
-.metric-card strong {
-  color: #fff;
-  font-size: 25px;
-  line-height: 1.1;
-}
-.metric-card small {
-  color: #fff;
-  font-size: 13px;
-}
 @media (max-width: 1100px) {
   .filters {
     grid-template-columns: repeat(3, minmax(0, 1fr));

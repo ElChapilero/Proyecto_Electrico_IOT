@@ -1,11 +1,11 @@
 <template>
   <article class="history-chart page-card chart-card-base">
-    <header class="chart-header">
+    <header class="chart-header chart-header-base">
       <div>
         <span class="eyebrow">Histórico horario</span>
         <h3>{{ title }}</h3>
       </div>
-      <span class="unit chart-unit">{{ unit }}</span>
+      <span class="chart-unit-base">{{ unit }}</span>
     </header>
     <div v-if="!validPoints.length" class="chart-empty">
       No hay mediciones para los filtros seleccionados.
@@ -55,12 +55,19 @@
               :cy="point.y"
               r="4"
               :fill="color"
+              :class="{
+                'is-dimmed': selectedCircuitKey && selectedCircuitKey !== circuitKey(point),
+                'is-point-selected': selectedPointKey === point.selectionKey,
+              }"
               tabindex="0"
               :aria-label="`${formatDate(point.fecha_hora)}: ${formatValue(point.value)} ${unit}`"
               @mouseenter="showTooltip($event, point)"
               @mouseleave="hideTooltip"
               @focus="showTooltip($event, point)"
               @blur="hideTooltip"
+              @click="togglePointSelection(point)"
+              @keydown.enter.prevent="togglePointSelection(point)"
+              @keydown.space.prevent="togglePointSelection(point)"
             />
             <g class="time-axis">
               <line
@@ -103,7 +110,7 @@
   </article>
 </template>
 <script setup>
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { chartTooltipPosition } from "../../utils/chartTooltip";
 const props = defineProps({
   points: { type: Array, default: () => [] },
@@ -138,6 +145,17 @@ const canvasWidth = computed(
 );
 const chartWrap = ref(null);
 const tooltip = ref(null);
+const selectedCircuitKey = ref(null);
+const selectedPointKey = ref(null);
+function circuitKey(point) {
+  return String(
+    point.circuito_id ??
+      point.circuit_id ??
+      point.circuito ??
+      point.circuito_nombre ??
+      "default",
+  );
+}
 const bounds = computed(() => {
   const values = validPoints.value.map((point) => Number(point[dataKey.value]));
   const min = Math.min(...values, 0);
@@ -164,6 +182,7 @@ const plottedPoints = computed(() => {
     return {
       ...point,
       value,
+      selectionKey: `${circuitKey(point)}-${point.fecha_hora}-${index}`,
       x: index * step + (step - width) / 2,
       width,
       y,
@@ -222,17 +241,27 @@ function showTooltip(event, point) {
 function hideTooltip() {
   tooltip.value = null;
 }
+function togglePointSelection(point) {
+  const key = circuitKey(point);
+  if (selectedPointKey.value === point.selectionKey) {
+    selectedCircuitKey.value = null;
+    selectedPointKey.value = null;
+    return;
+  }
+  selectedCircuitKey.value = key;
+  selectedPointKey.value = point.selectionKey;
+}
+watch(
+  () => props.points.map((point) => `${circuitKey(point)}-${point.fecha_hora}`).join("|"),
+  () => {
+    selectedCircuitKey.value = null;
+    selectedPointKey.value = null;
+  },
+);
 </script>
 <style scoped>
 .history-chart {
   padding: var(--chart-card-padding);
-}
-.chart-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: var(--chart-header-height);
 }
 .eyebrow {
   color: var(--color-primary);
@@ -245,18 +274,6 @@ function hideTooltip() {
   color: #e6f0fc;
   font-size: 18px;
   margin-top: 6px;
-}
-.unit {
-  min-height: var(--chart-unit-height);
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: var(--color-primary-soft);
-  color: #dceaff;
-  font-size: 13px;
-  font-weight: 700;
-  white-space: nowrap;
 }
 .chart-layout {
   display: grid;
@@ -314,6 +331,15 @@ function hideTooltip() {
   stroke: var(--chart-active);
   stroke-width: 1.5;
   filter: drop-shadow(0 0 4px currentColor);
+}
+.point.is-dimmed {
+  opacity: 0.28;
+}
+.point.is-point-selected {
+  opacity: 1;
+  r: 7;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 8px currentColor);
 }
 .point:hover,
 .point:focus {

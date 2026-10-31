@@ -72,6 +72,84 @@ a {
   border-radius: var(--chart-card-radius);
   box-shadow: var(--chart-card-shadow);
 }
+
+.metric-card-base {
+  height: var(--metric-card-height);
+  min-height: var(--metric-card-height);
+  min-width: 0;
+  padding: 17px 18px;
+  display: grid;
+  grid-template-rows: auto 1fr var(--metric-card-footer-height);
+  align-content: stretch;
+  gap: 4px;
+  border-top: 3px solid var(--metric-accent);
+}
+.metric-card-base > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #fff;
+  font-size: 13px;
+}
+.metric-card-base > strong {
+  min-width: 0;
+  align-self: center;
+  overflow-wrap: anywhere;
+  color: #fff;
+  font: 700 25px/1.1 var(--font-display);
+}
+.metric-card-base > small {
+  min-width: 0;
+  height: var(--metric-card-footer-height);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #fff;
+  font-size: 13px;
+}
+.chart-header-base {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: var(--chart-header-height);
+}
+.chart-unit-base {
+  min-height: var(--chart-unit-height);
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--color-primary-soft);
+  color: #dceaff;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.chart-marker-base {
+  width: 9px;
+  height: 9px;
+  display: inline-block;
+  flex: 0 0 auto;
+  border: 1.5px solid;
+  border-radius: 50%;
+}
+.chart-marker-base.square {
+  border-radius: 2px;
+}
+.chart-marker-base.diamond {
+  border-radius: 2px;
+  transform: rotate(45deg);
+}
+.chart-marker-base.triangle {
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  border: 0;
+  border-radius: 0;
+}
 .field {
   display: grid;
   gap: 6px;

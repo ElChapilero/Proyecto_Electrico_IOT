@@ -12,7 +12,7 @@
       <article
         v-for="card in cards"
         :key="card.label"
-        class="metric-card page-card"
+        class="metric-card metric-card-base page-card"
         :style="{ '--metric-accent': accent }"
       >
         <span>{{ card.label }}</span
@@ -65,37 +65,6 @@ defineProps({
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
-}
-.metric-card {
-  height: var(--metric-card-height);
-  min-height: var(--metric-card-height);
-  padding: 17px 18px;
-  display: grid;
-  grid-template-rows: auto 1fr var(--metric-card-footer-height);
-  align-content: stretch;
-  gap: 4px;
-  border-top: 3px solid var(--metric-accent);
-}
-.metric-card span {
-  color: #fff;
-  font-size: 13px;
-}
-.metric-card strong {
-  color: #fff;
-  font-size: 25px;
-  line-height: 1.1;
-  align-self: center;
-}
-.metric-card small {
-  min-width: 0;
-  height: var(--metric-card-footer-height);
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: #fff;
-  font-size: 13px;
 }
 @media (max-width: 650px) {
   .cards-row {

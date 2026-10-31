@@ -5,7 +5,6 @@
         <span class="eyebrow">Distribución por {{ entityLabel }}</span>
         <h3>Participación del consumo</h3>
       </div>
-      <strong class="chart-total">{{ formatValue(total) }} kWh</strong>
     </header>
     <div v-if="!items.length" class="empty">
       No hay consumo comparable para este periodo.
@@ -23,10 +22,20 @@
         </div>
       </div>
       <ul class="legend">
-        <li v-for="item in items" :key="item.key">
+        <li
+          v-for="item in items"
+          :key="item.key"
+          tabindex="0"
+          role="button"
+          :aria-pressed="selectedItemKey === item.key"
+          :class="{ 'is-dimmed': selectedItemKey && selectedItemKey !== item.key }"
+          @click="toggleItemSelection(item)"
+          @keydown.enter.prevent="toggleItemSelection(item)"
+          @keydown.space.prevent="toggleItemSelection(item)"
+        >
           <i :style="{ background: item.color }"></i
           ><span>{{ item.label }}</span
-          ><strong>{{ formatPercent(item.porcentaje_consumo) }}%</strong>
+          ><strong>{{ formatPercent(item.porcentaje) }}%</strong>
         </li>
       </ul>
     </div>
@@ -34,12 +43,13 @@
 </template>
 
 <script setup>
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 
 const props = defineProps({
   rows: { type: Array, default: () => [] },
   entityLabel: { type: String, default: "entidad" },
 });
+const selectedItemKey = ref(null);
 const colors = [
   "#39FF14",
   "#DFFF00",
@@ -70,12 +80,29 @@ const gradient = computed(() => {
   return `conic-gradient(${items.value
     .map((item) => {
       const end = start + item.porcentaje;
-      const part = `${item.color} ${start}% ${end}%`;
+      const visibleColor =
+        selectedItemKey.value && selectedItemKey.value !== item.key
+          ? `color-mix(in srgb, ${item.color} 28%, transparent)`
+          : item.color;
+      const part = `${visibleColor} ${start}% ${end}%`;
       start = end;
       return part;
     })
     .join(", ")})`;
 });
+function toggleItemSelection(item) {
+  selectedItemKey.value =
+    selectedItemKey.value === item.key ? null : item.key;
+}
+watch(
+  () =>
+    props.rows
+      .map((row, index) => `${index}-${row.panel_id || row.circuito_id}`)
+      .join("|"),
+  () => {
+    selectedItemKey.value = null;
+  },
+);
 function formatValue(value) {
   return Number(value).toLocaleString("es-CO", {
     minimumFractionDigits: 2,
@@ -108,14 +135,6 @@ function formatPercent(value) {
   color: #e6f0fc;
   font-size: 18px;
   margin-top: 6px;
-}
-.distribution header > strong {
-  min-height: var(--chart-unit-height);
-  display: inline-flex;
-  align-items: center;
-  color: #fff;
-  white-space: nowrap;
-  font-size: 14px;
 }
 .distribution-body {
   display: grid;
@@ -163,11 +182,21 @@ function formatPercent(value) {
 }
 .legend li {
   display: grid;
-  grid-template-columns: 13px 1fr auto;
+  grid-template-columns: 13px max-content max-content;
+  justify-content: start;
   align-items: center;
-  gap: 8px;
+  column-gap: 10px;
   color: #fff;
   font-size: 13px;
+  cursor: pointer;
+  transition: opacity var(--transition);
+}
+.legend li.is-dimmed {
+  opacity: 0.35;
+}
+.legend li:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
 }
 .legend i {
   width: 11px;
