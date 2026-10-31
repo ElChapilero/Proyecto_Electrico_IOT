@@ -65,8 +65,9 @@ async function create(panelId, userId, data) {
   if (!esUuidEsp32Valido(data.uuid_esp32))
     throw error(400, "uuid_esp32 tiene un formato invalido");
 
-  // Si no se indica la cantidad de circuitos, usa 2.
-  const circuitCount = data.circuitos === undefined ? 2 : data.circuitos;
+  // El sistema admite hasta cuatro circuitos. Si no se indica una cantidad,
+  // se crean los cuatro para que coincida con el firmware simulador.
+  const circuitCount = data.circuitos === undefined ? 4 : data.circuitos;
 
   if (data.circuitos !== undefined && typeof data.circuitos !== "number")
     throw error(400, "circuitos debe ser un número entero entre 1 y 4");

@@ -7,7 +7,7 @@ const { findPasswordChangedAt } = require("../modules/auth/auth.repository");
 // Verificar autenticación del usuario
 async function requiereAuth(req, res, next) {
   const header = req.headers.authorization || "";
-  // Ejemplo : Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
+  // se ecrea asi : Bearer eyJhbGciOiJIUzI1NiJ9...
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
 
   if (!token) {

@@ -1,12 +1,12 @@
 const service = require("./accesos.service"); // Importa la lógica para gestionar los accesos
 
 // devuelve su resultado y gestiona los errores
-const wrap = (fn) => async (req, res, next) => {
+const wrap = (fn) => async (req, res, next) => { // Recibe una función fn y devuelve otra función que Express usa como controlador.
   try {
-    const result = await fn(req);
+    const result = await fn(req); // Ejecuta la función recibida y espera su resultado. (actualización o eliminación en el servicio)
     if (result === undefined) return res.status(204).send();
-    res.json(result);
-  } catch (e) {
+    res.json(result); // Devuelve el resultado al frontend
+  } catch (e) { // errorHandler.js
     next(e);
   }
 };

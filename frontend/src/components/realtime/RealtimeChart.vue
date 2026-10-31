@@ -1,11 +1,11 @@
 <template>
-  <article class="chart-card page-card">
+  <article class="chart-card page-card chart-card-base">
     <header class="chart-header">
       <div>
         <span class="eyebrow">Lecturas reales · últimos minutos</span>
         <h3>{{ title }}</h3>
       </div>
-      <span class="unit">{{ unit }}</span>
+      <span class="unit chart-unit">{{ unit }}</span>
     </header>
     <div v-if="!hasData" class="chart-empty">
       Todavía no hay mediciones para mostrar en este rango.
@@ -350,15 +350,14 @@ function hideTooltip() {
 
 <style scoped>
 .chart-card {
-  width: 100%;
-  min-width: 0;
-  padding: 19px 20px;
+  padding: var(--chart-card-padding);
 }
 .chart-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
+  min-height: var(--chart-header-height);
 }
 .eyebrow {
   color: var(--color-primary);
@@ -373,12 +372,16 @@ function hideTooltip() {
   margin-top: 6px;
 }
 .unit {
-  padding: 5px 8px;
+  min-height: var(--chart-unit-height);
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
   border-radius: 6px;
   background: var(--color-primary-soft);
   color: #dceaff;
   font-size: 13px;
   font-weight: 700;
+  white-space: nowrap;
 }
 .chart-wrap {
   position: relative;
@@ -396,7 +399,7 @@ function hideTooltip() {
   overflow: visible;
 }
 .grid-lines line {
-  stroke: rgba(180, 205, 232, 0.22);
+  stroke: var(--chart-grid);
   stroke-width: 1;
 }
 .chart polyline {
@@ -409,7 +412,7 @@ function hideTooltip() {
 .chart circle,
 .chart rect {
   cursor: pointer;
-  stroke: #fff;
+  stroke: var(--chart-active);
   stroke-width: 1.5;
   transition:
     r var(--transition),
@@ -418,13 +421,6 @@ function hideTooltip() {
 .chart circle:hover,
 .chart circle:focus {
   r: 7;
-  outline: none;
-}
-.chart rect:hover,
-.chart rect:focus {
-  transform: scale(1.45);
-  transform-box: fill-box;
-  transform-origin: center;
   outline: none;
 }
 .chart text {
@@ -436,7 +432,7 @@ function hideTooltip() {
   font-size: 15px;
 }
 .time-axis line {
-  stroke: rgba(210, 230, 250, 0.65);
+  stroke: var(--chart-axis);
   stroke-width: 1;
 }
 .time-axis text {
@@ -444,18 +440,18 @@ function hideTooltip() {
 }
 .chart-tooltip {
   position: fixed;
-  z-index: 2;
+  z-index: var(--chart-tooltip-z);
   transform: translate(-50%, -100%);
   display: grid;
   gap: 3px;
-  min-width: 140px;
-  max-width: 220px;
-  padding: 9px 11px;
-  border: 1px solid rgba(150, 190, 235, 0.35);
-  border-radius: 8px;
-  background: #0b1728;
+  min-width: 190px;
+  max-width: 240px;
+  padding: var(--chart-tooltip-padding);
+  border: 1px solid var(--chart-tooltip-border);
+  border-radius: var(--chart-tooltip-radius);
+  background: var(--chart-tooltip-bg);
   color: #fff;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--chart-tooltip-shadow);
   font-size: 13px;
   pointer-events: none;
 }
@@ -545,7 +541,6 @@ function hideTooltip() {
 }
 .chart rect:hover,
 .chart rect:focus {
-  transform: none;
   stroke-width: 2.5;
   outline: none;
 }

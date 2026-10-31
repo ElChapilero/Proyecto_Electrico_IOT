@@ -1,11 +1,11 @@
 <template>
-  <article class="history-chart page-card">
+  <article class="history-chart page-card chart-card-base">
     <header class="chart-header">
       <div>
         <span class="eyebrow">Histórico horario</span>
         <h3>{{ title }}</h3>
       </div>
-      <span class="unit">{{ unit }}</span>
+      <span class="unit chart-unit">{{ unit }}</span>
     </header>
     <div v-if="!validPoints.length" class="chart-empty">
       No hay mediciones para los filtros seleccionados.
@@ -42,14 +42,18 @@
                 :y2="tick.y"
               />
             </g>
-            <rect
+            <polyline
+              class="line"
+              :points="linePoints"
+              :stroke="color"
+            />
+            <circle
               v-for="(point, index) in plottedPoints"
               :key="`${point.fecha_hora}-${point.circuito_id}-${index}`"
-              class="bar"
-              :x="point.x"
-              :y="point.y"
-              :width="point.width"
-              :height="point.height"
+              class="point"
+              :cx="point.x + point.width / 2"
+              :cy="point.y"
+              r="4"
               :fill="color"
               tabindex="0"
               :aria-label="`${formatDate(point.fecha_hora)}: ${formatValue(point.value)} ${unit}`"
@@ -167,6 +171,11 @@ const plottedPoints = computed(() => {
     };
   });
 });
+const linePoints = computed(() =>
+  plottedPoints.value
+    .map((point) => `${(point.x + point.width / 2).toFixed(1)},${point.y.toFixed(1)}`)
+    .join(" "),
+);
 const timeTicks = computed(() => {
   const data = plottedPoints.value;
   const step = data.length <= 8 ? 1 : Math.ceil(data.length / 8);
@@ -216,13 +225,14 @@ function hideTooltip() {
 </script>
 <style scoped>
 .history-chart {
-  padding: 19px 20px;
-  overflow: hidden;
+  padding: var(--chart-card-padding);
 }
 .chart-header {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
+  min-height: var(--chart-header-height);
 }
 .eyebrow {
   color: var(--color-primary);
@@ -237,12 +247,16 @@ function hideTooltip() {
   margin-top: 6px;
 }
 .unit {
-  padding: 5px 8px;
+  min-height: var(--chart-unit-height);
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
   border-radius: 6px;
   background: var(--color-primary-soft);
   color: #dceaff;
   font-size: 13px;
   font-weight: 700;
+  white-space: nowrap;
 }
 .chart-layout {
   display: grid;
@@ -270,7 +284,7 @@ function hideTooltip() {
   height: 390px;
 }
 .grid-lines line {
-  stroke: rgba(180, 205, 232, 0.22);
+  stroke: var(--chart-grid);
 }
 .chart text,
 .y-axis text {
@@ -285,25 +299,31 @@ function hideTooltip() {
   font-size: 13px;
 }
 .time-axis line {
-  stroke: rgba(210, 230, 250, 0.65);
+  stroke: var(--chart-axis);
 }
-.bar {
-  cursor: pointer;
-  opacity: 0.9;
-  stroke: #fff;
-  stroke-width: 1.5;
-  rx: 3;
+.line {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
   filter: drop-shadow(0 0 4px currentColor);
 }
-.bar:hover,
-.bar:focus {
+.point {
+  cursor: pointer;
+  opacity: 0.9;
+  stroke: var(--chart-active);
+  stroke-width: 1.5;
+  filter: drop-shadow(0 0 4px currentColor);
+}
+.point:hover,
+.point:focus {
   opacity: 1;
-  stroke: #fff;
-  stroke-width: 2;
+  r: 7;
+  stroke-width: 2.5;
   outline: none;
 }
 .chart-empty {
-  min-height: 280px;
+  min-height: var(--chart-empty-height);
   display: grid;
   place-items: center;
   color: #fff;
@@ -315,17 +335,17 @@ function hideTooltip() {
 }
 .chart-tooltip {
   position: fixed;
-  z-index: 1000;
+  z-index: var(--chart-tooltip-z);
   transform: translate(-50%, -100%);
   display: grid;
   gap: 4px;
-  min-width: 205px;
-  padding: 10px 12px;
-  border: 1px solid rgba(150, 190, 235, 0.35);
-  border-radius: 8px;
-  background: #0b1728;
+  min-width: 190px;
+  padding: var(--chart-tooltip-padding);
+  border: 1px solid var(--chart-tooltip-border);
+  border-radius: var(--chart-tooltip-radius);
+  background: var(--chart-tooltip-bg);
   color: #fff;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--chart-tooltip-shadow);
   font-size: 13px;
   pointer-events: none;
 }

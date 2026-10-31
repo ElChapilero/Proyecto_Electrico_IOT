@@ -1,11 +1,11 @@
 <template>
-  <article class="distribution page-card">
+  <article class="distribution page-card chart-card-base">
     <header>
       <div>
         <span class="eyebrow">Distribución por {{ entityLabel }}</span>
         <h3>Participación del consumo</h3>
       </div>
-      <strong>{{ formatValue(total) }} kWh</strong>
+      <strong class="chart-total">{{ formatValue(total) }} kWh</strong>
     </header>
     <div v-if="!items.length" class="empty">
       No hay consumo comparable para este periodo.
@@ -89,13 +89,14 @@ function formatPercent(value) {
 
 <style scoped>
 .distribution {
-  padding: 19px 20px;
+  padding: var(--chart-card-padding);
 }
 .distribution header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
+  min-height: var(--chart-header-height);
 }
 .eyebrow {
   color: var(--color-primary);
@@ -109,6 +110,9 @@ function formatPercent(value) {
   margin-top: 6px;
 }
 .distribution header > strong {
+  min-height: var(--chart-unit-height);
+  display: inline-flex;
+  align-items: center;
   color: #fff;
   white-space: nowrap;
   font-size: 14px;
@@ -118,7 +122,7 @@ function formatPercent(value) {
   grid-template-columns: minmax(180px, 240px) 1fr;
   align-items: center;
   gap: 24px;
-  min-height: 240px;
+  min-height: var(--chart-empty-height);
 }
 .donut {
   position: relative;
@@ -174,7 +178,7 @@ function formatPercent(value) {
   font-size: 13px;
 }
 .empty {
-  min-height: 240px;
+  min-height: var(--chart-empty-height);
   display: grid;
   place-items: center;
   color: #fff;

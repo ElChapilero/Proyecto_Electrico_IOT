@@ -63,6 +63,15 @@ a {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
 }
+
+.chart-card-base {
+  width: 100%;
+  min-width: 0;
+  padding: var(--chart-card-padding);
+  overflow: hidden;
+  border-radius: var(--chart-card-radius);
+  box-shadow: var(--chart-card-shadow);
+}
 .field {
   display: grid;
   gap: 6px;

@@ -65,11 +65,13 @@ defineProps({
   gap: 14px;
 }
 .metric-card {
-  min-height: 108px;
+  height: var(--metric-card-height);
+  min-height: var(--metric-card-height);
   padding: 17px 18px;
   display: grid;
-  align-content: center;
-  gap: 5px;
+  grid-template-rows: auto 1fr var(--metric-card-footer-height);
+  align-content: stretch;
+  gap: 4px;
   border-top: 3px solid var(--metric-accent);
 }
 .metric-card span {
@@ -80,8 +82,16 @@ defineProps({
   color: #fff;
   font-size: 25px;
   line-height: 1.1;
+  align-self: center;
 }
 .metric-card small {
+  min-width: 0;
+  height: var(--metric-card-footer-height);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: #fff;
   font-size: 13px;
 }

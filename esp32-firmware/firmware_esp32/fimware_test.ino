@@ -13,7 +13,7 @@
 #include <time.h>
 #include <sys/time.h>
 
-#define MAX_MEDIDORES 2 // Cantidad de circuitos simulados que se reportan.
+#define MAX_MEDIDORES 4 // Cantidad de circuitos simulados que se reportan.
 
 // La configuración local queda en firmware_config.h, ignorado por Git.
 // Copia firmware_config.example.h como firmware_config.h antes de compilar.
@@ -389,7 +389,7 @@ void reconectarMQTT() {
 }
 
 // GENERACION DE DATOS SIMULADOS (igual que antes)
-float energiaAcumulada[MAX_MEDIDORES] = {0.0, 0.0};
+float energiaAcumulada[MAX_MEDIDORES] = {0.0, 0.0, 0.0, 0.0};
 
 // Genera valores aleatorios con tres decimales de precisión.
 float randomFloat(float minimo, float maximo) {

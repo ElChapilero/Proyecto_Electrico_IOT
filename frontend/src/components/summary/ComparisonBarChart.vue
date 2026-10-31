@@ -1,11 +1,11 @@
 <template>
-  <article class="comparison-chart page-card">
+  <article class="comparison-chart page-card chart-card-base">
     <header class="chart-header">
       <div>
         <span class="eyebrow">Comparación por {{ entityLabel }}</span>
         <h3>{{ title }}</h3>
       </div>
-      <span class="unit">{{ unit }}</span>
+      <span class="unit chart-unit">{{ unit }}</span>
     </header>
     <div v-if="!bars.length" class="chart-empty">
       No hay datos comparables para este periodo.
@@ -208,14 +208,14 @@ function hideTooltip() {
 
 <style scoped>
 .comparison-chart {
-  width: 100%;
-  min-width: 0;
-  padding: 19px 20px;
+  padding: var(--chart-card-padding);
 }
 .chart-header {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
+  min-height: var(--chart-header-height);
 }
 .eyebrow {
   color: var(--color-primary);
@@ -229,12 +229,16 @@ function hideTooltip() {
   margin-top: 6px;
 }
 .unit {
-  padding: 5px 8px;
+  min-height: var(--chart-unit-height);
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
   border-radius: 6px;
   background: var(--color-primary-soft);
   color: #dceaff;
   font-size: 13px;
   font-weight: 700;
+  white-space: nowrap;
 }
 .chart-wrap {
   position: relative;
@@ -249,7 +253,7 @@ function hideTooltip() {
   overflow: visible;
 }
 .grid-lines line {
-  stroke: rgba(180, 205, 232, 0.22);
+  stroke: var(--chart-grid);
 }
 .chart text {
   fill: #fff;
@@ -281,12 +285,13 @@ function hideTooltip() {
   display: grid;
   gap: 4px;
   min-width: 190px;
-  padding: 9px 11px;
-  border: 1px solid rgba(150, 190, 235, 0.35);
-  border-radius: 8px;
-  background: #0b1728;
+  max-width: 240px;
+  padding: var(--chart-tooltip-padding);
+  border: 1px solid var(--chart-tooltip-border);
+  border-radius: var(--chart-tooltip-radius);
+  background: var(--chart-tooltip-bg);
   color: #fff;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--chart-tooltip-shadow);
   font-size: 13px;
   pointer-events: none;
 }
@@ -301,7 +306,7 @@ function hideTooltip() {
   font-size: 13px;
 }
 .chart-empty {
-  min-height: 280px;
+  min-height: var(--chart-empty-height);
   display: grid;
   place-items: center;
   color: #fff;

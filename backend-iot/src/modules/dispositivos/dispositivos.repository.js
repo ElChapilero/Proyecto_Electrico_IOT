@@ -31,7 +31,7 @@ async function find(id) {
 }
 
 // Crea un dispositivo y sus circuitos en una transacción.
-async function create({ panelId, uuid, nombre, circuitCount = 2 }) {
+async function create({ panelId, uuid, nombre, circuitCount = 4 }) {
   const client = await pool.connect();
 
   try {
@@ -127,7 +127,9 @@ async function register(codeId, panelId, uuid) {
       )
     ).rows[0];
 
-    for (let i = 1; i <= 2; i++)
+    // El registro por código debe dejar listos los cuatro índices que puede
+    // publicar el firmware simulador.
+    for (let i = 1; i <= 4; i++)
       await client.query(
         "INSERT INTO circuitos (id_dispositivo, indice, nombre) VALUES ($1, $2, $3)",
         [d.id, i, `Circuito ${i}`],
