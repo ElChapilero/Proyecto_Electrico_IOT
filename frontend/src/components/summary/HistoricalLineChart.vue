@@ -5,7 +5,16 @@
         <span class="eyebrow">{{ periodLabel }}</span>
         <h3>{{ title }}</h3>
       </div>
-        <span class="chart-unit-base">{{ unit }}</span>
+        <div class="chart-header-actions">
+          <span class="chart-unit-base">{{ unit }}</span>
+          <InfoPopover
+            :title="metricInfoFor(metricKey).label"
+            :summary="metricInfoFor(metricKey).summary"
+            :how="metricInfoFor(metricKey).how"
+            :detail="metricInfoFor(metricKey).detail"
+            placement="header"
+          />
+        </div>
     </header>
     <div v-if="!points.length" class="chart-empty">
       No hay mediciones para este periodo.
@@ -121,6 +130,8 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import { chartTooltipPosition } from "../../utils/chartTooltip";
+import InfoPopover from "../common/InfoPopover.vue";
+import { metricInfoFor } from "../../utils/metricInfo";
 
 const props = defineProps({
   title: { type: String, required: true },
@@ -129,6 +140,7 @@ const props = defineProps({
   points: { type: Array, default: () => [] },
   average: { type: Number, default: null },
   period: { type: String, required: true },
+  metricKey: { type: String, default: "potencia" },
 });
 
 const chartWrap = ref(null);

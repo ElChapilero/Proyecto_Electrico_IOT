@@ -5,7 +5,16 @@
         <span class="eyebrow">{{ eyebrow }}</span>
         <h3>{{ title }}</h3>
       </div>
-      <span class="chart-unit-base">{{ unit }}</span>
+      <div class="chart-header-actions">
+        <span class="chart-unit-base">{{ unit }}</span>
+        <InfoPopover
+          :title="metricInfoFor(metricKey).label"
+          :summary="metricInfoFor(metricKey).summary"
+          :how="metricInfoFor(metricKey).how"
+          :detail="metricInfoFor(metricKey).detail"
+          placement="header"
+        />
+      </div>
     </header>
     <div v-if="!hasData" class="chart-empty">
       {{ emptyMessage }}
@@ -185,9 +194,12 @@ import {
   comparisonColor,
   comparisonMarkers,
 } from "../../utils/chartVisuals";
+import InfoPopover from "../common/InfoPopover.vue";
+import { metricInfoFor } from "../../utils/metricInfo";
 
 const props = defineProps({
   title: { type: String, required: true },
+  metricKey: { type: String, default: "potencia" },
   unit: { type: String, required: true },
   color: { type: String, required: true },
   explanation: { type: String, required: true },
@@ -409,6 +421,8 @@ function hideTooltip() {
 
 <style scoped>
 .chart-card {
+  position: relative;
+  overflow: visible;
   padding: var(--chart-card-padding);
 }
 .eyebrow {

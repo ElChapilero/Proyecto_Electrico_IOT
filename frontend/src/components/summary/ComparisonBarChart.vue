@@ -5,7 +5,16 @@
         <span class="eyebrow">Comparación por {{ entityLabel }}</span>
         <h3>{{ title }}</h3>
       </div>
-      <span class="chart-unit-base">{{ unit }}</span>
+      <div class="chart-header-actions">
+        <span class="chart-unit-base">{{ unit }}</span>
+        <InfoPopover
+          :title="metricInfoFor(metricKey).label"
+          :summary="metricInfoFor(metricKey).summary"
+          :how="metricInfoFor(metricKey).how"
+          :detail="metricInfoFor(metricKey).detail"
+          placement="header"
+        />
+      </div>
     </header>
     <div v-if="!bars.length" class="chart-empty">
       No hay datos comparables para este periodo.
@@ -155,6 +164,8 @@
 </template>
 
 <script setup>
+import InfoPopover from "../common/InfoPopover.vue";
+import { metricInfoFor } from "../../utils/metricInfo";
 import { computed, ref, watch } from "vue";
 import { chartTooltipPosition } from "../../utils/chartTooltip";
 import {
@@ -169,6 +180,7 @@ const props = defineProps({
   rows: { type: Array, default: () => [] },
   valueKey: { type: String, required: true },
   entityLabel: { type: String, default: "entidad" },
+  metricKey: { type: String, default: "potencia" },
 });
 
 const chartWrap = ref(null);

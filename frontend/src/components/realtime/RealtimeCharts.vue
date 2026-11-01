@@ -19,6 +19,7 @@
       :unit="chart.unit"
       :color="chart.color"
       :explanation="chart.explanation"
+      :metric-key="chart.key"
       :series="seriesByMetric[chart.key] || []"
     />
   </section>

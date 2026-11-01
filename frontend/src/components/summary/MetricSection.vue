@@ -18,6 +18,12 @@
         <span>{{ card.label }}</span
         ><strong>{{ card.value }}</strong
         ><small>{{ card.unit }}</small>
+        <InfoPopover
+          :title="metricInfoFor(metricKey).label"
+          :summary="metricInfoFor(metricKey).summary"
+          :how="metricInfoFor(metricKey).how"
+          :detail="metricInfoFor(metricKey).detail"
+        />
       </article>
     </div>
     <HistoricalLineChart
@@ -27,12 +33,15 @@
       :points="chartPoints"
       :average="average"
       :period="period"
+      :metric-key="metricKey"
     />
   </section>
 </template>
 
 <script setup>
 import HistoricalLineChart from "./HistoricalLineChart.vue";
+import InfoPopover from "../common/InfoPopover.vue";
+import { metricInfoFor } from "../../utils/metricInfo";
 defineProps({
   title: String,
   accent: String,
@@ -41,6 +50,7 @@ defineProps({
   chartPoints: { type: Array, default: () => [] },
   average: { type: Number, default: null },
   period: { type: String, required: true },
+  metricKey: { type: String, default: "potencia" },
 });
 </script>
 

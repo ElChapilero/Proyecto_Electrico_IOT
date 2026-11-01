@@ -10,6 +10,7 @@
     time-tick-format="day-month"
     :time-tick-count="6"
     :series="series"
+    :metric-key="variable"
   />
 </template>
 

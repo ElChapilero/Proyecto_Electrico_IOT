@@ -121,6 +121,7 @@
         <section class="metric-sections">
           <ComparisonMetricSection
             title="Energía"
+            metric-key="energia"
             accent="#39FF14"
             unit="kWh"
             :rows="comparisonRows"
@@ -130,6 +131,7 @@
           />
           <ComparisonMetricSection
             title="Potencia"
+            metric-key="potencia"
             accent="#DFFF00"
             unit="W"
             :rows="comparisonRows"
@@ -139,6 +141,7 @@
           />
           <ComparisonMetricSection
             title="Voltaje"
+            metric-key="voltaje"
             accent="#FF3131"
             unit="V"
             :rows="comparisonRows"
@@ -148,6 +151,7 @@
           />
           <ComparisonMetricSection
             title="Corriente"
+            metric-key="corriente"
             accent="#7B2CFF"
             unit="A"
             :rows="comparisonRows"
@@ -157,6 +161,7 @@
           />
           <ComparisonMetricSection
             title="Factor de potencia"
+            metric-key="factor_potencia"
             accent="#FF6A00"
             unit="FP"
             :rows="comparisonRows"
@@ -170,6 +175,7 @@
         <section class="metric-sections">
           <MetricSection
             title="Energía"
+            metric-key="energia"
             accent="#39FF14"
             :cards="energyCards"
             :chart="energyChart"
@@ -179,6 +185,7 @@
           />
           <MetricSection
             title="Potencia"
+            metric-key="potencia"
             accent="#DFFF00"
             :cards="powerCards"
             :chart="{ title: 'Potencia', unit: 'W' }"
@@ -188,6 +195,7 @@
           />
           <MetricSection
             title="Voltaje"
+            metric-key="voltaje"
             accent="#FF3131"
             :cards="voltageCards"
             :chart="{ title: 'Voltaje', unit: 'V' }"
@@ -197,6 +205,7 @@
           />
           <MetricSection
             title="Corriente"
+            metric-key="corriente"
             accent="#7B2CFF"
             :cards="currentCards"
             :chart="{ title: 'Corriente', unit: 'A' }"
@@ -206,6 +215,7 @@
           />
           <MetricSection
             title="Factor de potencia"
+            metric-key="factor_potencia"
             accent="#FF6A00"
             :cards="factorCards"
             :chart="{ title: 'Factor de potencia', unit: 'FP' }"

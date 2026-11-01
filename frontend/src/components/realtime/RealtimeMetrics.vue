@@ -11,11 +11,19 @@
         formatMetric(record.latest?.[metric.key], metric.decimals)
       }}</strong
       ><small>{{ metric.unit }}</small>
+      <InfoPopover
+        :title="metricInfoFor(metric.key).label"
+        :summary="metricInfoFor(metric.key).summary"
+        :how="metricInfoFor(metric.key).how"
+        :detail="metricInfoFor(metric.key).detail"
+      />
     </article>
   </div>
 </template>
 <script setup>
 import { formatMetric } from "../../composables/useRealtimeData";
+import InfoPopover from "../common/InfoPopover.vue";
+import { metricInfoFor } from "../../utils/metricInfo";
 defineProps({
   record: { type: Object, required: true },
   metrics: { type: Array, required: true },

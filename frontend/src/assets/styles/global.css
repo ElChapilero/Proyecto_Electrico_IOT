@@ -65,6 +65,7 @@ a {
 }
 
 .chart-card-base {
+  position: relative;
   width: 100%;
   min-width: 0;
   padding: var(--chart-card-padding);
@@ -74,6 +75,7 @@ a {
 }
 
 .metric-card-base {
+  position: relative;
   height: var(--metric-card-height);
   min-height: var(--metric-card-height);
   min-width: 0;
@@ -116,6 +118,12 @@ a {
   justify-content: space-between;
   gap: 12px;
   min-height: var(--chart-header-height);
+}
+.chart-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
 }
 .chart-unit-base {
   min-height: var(--chart-unit-height);

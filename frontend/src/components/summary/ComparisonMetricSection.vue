@@ -18,6 +18,12 @@
         <span>{{ card.label }}</span
         ><strong>{{ card.value }}</strong
         ><small>{{ card.entity }} · {{ unit }}</small>
+        <InfoPopover
+          :title="metricInfoFor(metricKey).label"
+          :summary="metricInfoFor(metricKey).summary"
+          :how="metricInfoFor(metricKey).how"
+          :detail="metricInfoFor(metricKey).detail"
+        />
       </article>
     </div>
     <ComparisonBarChart
@@ -27,12 +33,15 @@
       :rows="rows"
       :value-key="valueKey"
       :entity-label="entityLabel"
+      :metric-key="metricKey"
     />
   </section>
 </template>
 
 <script setup>
 import ComparisonBarChart from "./ComparisonBarChart.vue";
+import InfoPopover from "../common/InfoPopover.vue";
+import { metricInfoFor } from "../../utils/metricInfo";
 defineProps({
   title: String,
   accent: String,
@@ -41,6 +50,7 @@ defineProps({
   valueKey: String,
   entityLabel: String,
   cards: { type: Array, default: () => [] },
+  metricKey: { type: String, default: "potencia" },
 });
 </script>
 
