@@ -72,9 +72,9 @@ onBeforeUnmount(() => document.removeEventListener("keydown", closeOnEscape));
   height: 24px;
   border: 1px solid rgba(220, 235, 255, 0.55);
   border-radius: 50%;
-  background: rgba(10, 18, 32, 0.68);
+  background: var(--color-primary-soft);
   color: #fff;
-  font: 700 17px/1 var(--font-body);
+  font: 700 13px/1 var(--font-body);
   cursor: pointer;
 }
 .info-trigger:hover,
