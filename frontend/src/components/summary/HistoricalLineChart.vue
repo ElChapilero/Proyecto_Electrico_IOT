@@ -124,6 +124,7 @@
         >Promedio del periodo</span
       >
     </div>
+    <InterpretationCard :text="interpretationText" :has-data="validPoints.length > 0" />
   </article>
 </template>
 
@@ -133,6 +134,8 @@ import { chartTooltipPosition } from "../../utils/chartTooltip";
 import InfoPopover from "../common/InfoPopover.vue";
 import { metricInfoFor } from "../../utils/metricInfo";
 import { parseProjectDate } from "../../utils/chartDates";
+import InterpretationCard from "../common/InterpretationCard.vue";
+import { buildInterpretation } from "../../utils/interpretation";
 
 const props = defineProps({
   title: { type: String, required: true },
@@ -173,6 +176,13 @@ const validPoints = computed(() =>
       Number.isFinite(Number(point.value)) &&
       Number.isFinite(parseProjectDate(point.time).getTime()),
   ),
+);
+const interpretationText = computed(() =>
+  buildInterpretation({
+    metricKey: props.metricKey,
+    period: periodLabel.value,
+    observations: validPoints.value,
+  }),
 );
 const minValue = computed(() =>
   Math.min(...validPoints.value.map((point) => Number(point.value))),

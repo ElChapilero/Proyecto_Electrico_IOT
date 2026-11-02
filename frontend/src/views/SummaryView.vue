@@ -188,7 +188,7 @@
             metric-key="potencia"
             accent="#DFFF00"
             :cards="powerCards"
-            :chart="{ title: 'Potencia', unit: 'W' }"
+            :chart="{ title: normalChartTitle('potencia', period), unit: 'W' }"
             :chart-points="chartPoints('promedio_potencia')"
             :average="seriesAverage('promedio_potencia')"
             :period="period"
@@ -198,7 +198,7 @@
             metric-key="voltaje"
             accent="#FF3131"
             :cards="voltageCards"
-            :chart="{ title: 'Voltaje', unit: 'V' }"
+            :chart="{ title: normalChartTitle('voltaje', period), unit: 'V' }"
             :chart-points="chartPoints('promedio_voltaje')"
             :average="seriesAverage('promedio_voltaje')"
             :period="period"
@@ -208,7 +208,7 @@
             metric-key="corriente"
             accent="#7B2CFF"
             :cards="currentCards"
-            :chart="{ title: 'Corriente', unit: 'A' }"
+            :chart="{ title: normalChartTitle('corriente', period), unit: 'A' }"
             :chart-points="chartPoints('promedio_corriente')"
             :average="seriesAverage('promedio_corriente')"
             :period="period"
@@ -218,7 +218,7 @@
             metric-key="factor_potencia"
             accent="#FF6A00"
             :cards="factorCards"
-            :chart="{ title: 'Factor de potencia', unit: 'FP' }"
+            :chart="{ title: normalChartTitle('factor_potencia', period), unit: 'FP' }"
             :chart-points="chartPoints('promedio_factor_potencia')"
             :average="seriesAverage('promedio_factor_potencia')"
             :period="period"
@@ -351,7 +351,21 @@ const currentCards = computed(() =>
 const factorCards = computed(() =>
   cardsForSeries("promedio_factor_potencia", "FP"),
 );
-const energyChart = { title: "Consumo de energía por hora", unit: "kWh" };
+function normalChartTitle(metric, selectedPeriod) {
+  const aggregation = selectedPeriod === "day" ? "hora" : "día";
+  const titles = {
+    energia: `Consumo promedio de energía por ${aggregation}`,
+    potencia: `Potencia promedio por ${aggregation}`,
+    voltaje: `Voltaje promedio por ${aggregation}`,
+    corriente: `Corriente promedio por ${aggregation}`,
+    factor_potencia: `Factor de potencia promedio por ${aggregation}`,
+  };
+  return titles[metric] || "Resumen por periodo";
+}
+const energyChart = computed(() => ({
+  title: normalChartTitle("energia", period.value),
+  unit: "kWh",
+}));
 function seriesValues(key) {
   return (dashboard.value?.series || [])
     .map((item) => Number(item[key]))

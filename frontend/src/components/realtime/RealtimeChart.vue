@@ -185,6 +185,7 @@
         >{{ series.label }}</span
       >
     </div>
+    <InterpretationCard :text="interpretationText" :has-data="hasData" />
   </article>
 </template>
 
@@ -197,6 +198,8 @@ import {
 import InfoPopover from "../common/InfoPopover.vue";
 import { metricInfoFor } from "../../utils/metricInfo";
 import { parseProjectDate } from "../../utils/chartDates";
+import InterpretationCard from "../common/InterpretationCard.vue";
+import { buildInterpretation } from "../../utils/interpretation";
 
 const props = defineProps({
   title: { type: String, required: true },
@@ -213,6 +216,8 @@ const props = defineProps({
   gapThresholdMs: { type: Number, default: 15000 },
   timeTickFormat: { type: String, default: "time" },
   timeTickCount: { type: Number, default: 2 },
+  interpretationPeriod: { type: String, default: "el tiempo real" },
+  interpretationDailyAggregation: { type: Boolean, default: false },
 });
 const chartWrap = ref(null);
 const tooltip = ref(null);
@@ -221,6 +226,18 @@ const selectedPointKey = ref(null);
 const hasData = computed(() =>
   props.series.some((series) => series.points?.length),
 );
+const interpretationText = computed(() => {
+  const observations = props.series.flatMap((item) =>
+    (item.points || []).map((point) => ({ ...point, label: item.label, seriesId: item.id })),
+  );
+  return buildInterpretation({
+    metricKey: props.metricKey,
+    period: props.interpretationPeriod,
+    observations,
+    dailyAggregation: props.interpretationDailyAggregation,
+    mode: props.eyebrow.includes("Histórico") ? "period" : "realtime",
+  });
+});
 const allPoints = computed(() =>
   props.series
     .flatMap((series) => series.points || [])

@@ -160,6 +160,7 @@
         >{{ bar.label }}</span
       >
     </footer>
+    <InterpretationCard :text="interpretationText" :has-data="bars.length > 0" />
   </article>
 </template>
 
@@ -172,6 +173,8 @@ import {
   comparisonColor,
   comparisonMarkers,
 } from "../../utils/chartVisuals";
+import InterpretationCard from "../common/InterpretationCard.vue";
+import { buildInterpretation } from "../../utils/interpretation";
 
 const props = defineProps({
   title: { type: String, required: true },
@@ -244,6 +247,14 @@ const bars = computed(() => {
     };
   });
 });
+const interpretationText = computed(() =>
+  buildInterpretation({
+    metricKey: props.metricKey,
+    observations: bars.value,
+    comparison: true,
+    period: "el periodo seleccionado",
+  }),
+);
 function markerY(bar) {
   return Math.max(18, bar.y - 10);
 }

@@ -75,6 +75,8 @@
         <HistoryCharts
           :points="historyRows"
           :variable="selectedVariable"
+          :from-date="fromDate"
+          :to-date="toDate"
         />
       </div>
       <section class="table-filters page-card">
