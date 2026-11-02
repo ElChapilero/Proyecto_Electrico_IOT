@@ -128,10 +128,11 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { chartTooltipPosition } from "../../utils/chartTooltip";
 import InfoPopover from "../common/InfoPopover.vue";
 import { metricInfoFor } from "../../utils/metricInfo";
+import { parseProjectDate } from "../../utils/chartDates";
 
 const props = defineProps({
   title: { type: String, required: true },
@@ -142,6 +143,7 @@ const props = defineProps({
   period: { type: String, required: true },
   metricKey: { type: String, default: "potencia" },
 });
+const emit = defineEmits(["point-selected"]);
 
 const chartWrap = ref(null);
 const tooltip = ref(null);
@@ -169,7 +171,7 @@ const validPoints = computed(() =>
   props.points.filter(
     (point) =>
       Number.isFinite(Number(point.value)) &&
-      Number.isFinite(new Date(point.time).getTime()),
+      Number.isFinite(parseProjectDate(point.time).getTime()),
   ),
 );
 const minValue = computed(() =>
@@ -179,10 +181,10 @@ const maxValue = computed(() =>
   Math.max(...validPoints.value.map((point) => Number(point.value))),
 );
 const minTime = computed(() =>
-  Math.min(...validPoints.value.map((point) => new Date(point.time).getTime())),
+  Math.min(...validPoints.value.map((point) => parseProjectDate(point.time).getTime())),
 );
 const maxTime = computed(() =>
-  Math.max(...validPoints.value.map((point) => new Date(point.time).getTime())),
+  Math.max(...validPoints.value.map((point) => parseProjectDate(point.time).getTime())),
 );
 const valueSpan = computed(() =>
   Math.max(0.000001, maxValue.value - minValue.value),
@@ -192,7 +194,7 @@ function formatValue(value) {
   return Number(value).toLocaleString("es-CO", { maximumFractionDigits: 3 });
 }
 function formatTooltipDate(value) {
-  const date = new Date(value);
+  const date = parseProjectDate(value);
   if (!Number.isFinite(date.getTime())) return "—";
   return new Intl.DateTimeFormat(
     "es-CO",
@@ -257,7 +259,7 @@ const timeTicks = computed(() => {
     }));
 });
 function formatAxisDate(value) {
-  const date = new Date(value);
+  const date = parseProjectDate(value);
   return new Intl.DateTimeFormat(
     "es-CO",
     props.period === "day"
@@ -283,16 +285,30 @@ function togglePointSelection(point) {
   if (selectedPointKey.value === point.key) {
     selectedCircuitKey.value = null;
     selectedPointKey.value = null;
+    emit("point-selected", null);
     return;
   }
   selectedCircuitKey.value = key;
   selectedPointKey.value = point.key;
+  emit("point-selected", point);
 }
+function clearSelection() {
+  if (selectedPointKey.value === null && selectedCircuitKey.value === null) return;
+  selectedCircuitKey.value = null;
+  selectedPointKey.value = null;
+  emit("point-selected", null);
+}
+function handleOutsideClick(event) {
+  if (!chartWrap.value?.contains(event.target)) clearSelection();
+}
+onMounted(() => document.addEventListener("pointerdown", handleOutsideClick));
+onBeforeUnmount(() => document.removeEventListener("pointerdown", handleOutsideClick));
 watch(
-  () => props.points.map((point) => `${circuitKey(point)}-${point.time}`).join("|"),
+  () => props.points.map((point) => `${circuitKey(point)}-${point.time}-${point.value}`).join("|"),
   () => {
     selectedCircuitKey.value = null;
     selectedPointKey.value = null;
+    emit("point-selected", null);
   },
 );
 </script>

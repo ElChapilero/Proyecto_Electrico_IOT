@@ -56,6 +56,10 @@ async function dashboard(circuitId, from, to, period) {
        SELECT periodo,
          (array_agg(energia_inicial ORDER BY fecha_hora) FILTER (WHERE energia_inicial IS NOT NULL))[1] AS energia_inicial,
          (array_agg(energia_final ORDER BY fecha_hora DESC) FILTER (WHERE energia_final IS NOT NULL))[1] AS energia_final,
+         MIN(CASE WHEN energia_inicial IS NOT NULL AND energia_final IS NOT NULL
+             THEN LEAST(energia_inicial, energia_final) END) AS min_energia,
+         MAX(CASE WHEN energia_inicial IS NOT NULL AND energia_final IS NOT NULL
+             THEN GREATEST(energia_inicial, energia_final) END) AS max_energia,
          CASE WHEN COUNT(consumo_energia) = 0 THEN NULL ELSE COALESCE(SUM(consumo_energia), 0) END AS consumo_energia,
          COALESCE(bool_or(energia_reset_detectado), FALSE) AS energia_reset_detectado,
          SUM(cantidad_muestras)::int AS cantidad_muestras,

@@ -196,6 +196,7 @@ import {
 } from "../../utils/chartVisuals";
 import InfoPopover from "../common/InfoPopover.vue";
 import { metricInfoFor } from "../../utils/metricInfo";
+import { parseProjectDate } from "../../utils/chartDates";
 
 const props = defineProps({
   title: { type: String, required: true },
@@ -229,7 +230,7 @@ const minTime = computed(() =>
   Math.min(
     ...props.series
       .flatMap((series) => series.points || [])
-      .map((point) => new Date(point.time).getTime())
+      .map((point) => parseProjectDate(point.time).getTime())
       .filter(Number.isFinite),
   ),
 );
@@ -237,7 +238,7 @@ const maxTime = computed(() =>
   Math.max(
     ...props.series
       .flatMap((series) => series.points || [])
-      .map((point) => new Date(point.time).getTime())
+      .map((point) => parseProjectDate(point.time).getTime())
       .filter(Number.isFinite),
   ),
 );
@@ -248,7 +249,7 @@ const maxValue = computed(() =>
   Math.max(...allPoints.value.map((point) => Number(point.value))),
 );
 function formatDate(value) {
-  const time = new Date(value);
+  const time = parseProjectDate(value);
   return Number.isFinite(time.getTime())
     ? new Intl.DateTimeFormat("es-CO", {
         day: "2-digit",
@@ -258,7 +259,7 @@ function formatDate(value) {
     : "—";
 }
 function formatClock(value) {
-  const time = new Date(value);
+  const time = parseProjectDate(value);
   return Number.isFinite(time.getTime())
     ? new Intl.DateTimeFormat("es-CO", {
         hour: "2-digit",
@@ -294,12 +295,12 @@ const normalizedSeries = computed(() => {
   return props.series
     .map((series, index) => {
       const points = [...(series.points || [])].sort(
-        (a, b) => new Date(a.time) - new Date(b.time),
+        (a, b) => parseProjectDate(a.time) - parseProjectDate(b.time),
       );
       const dots = points.map((point, pointIndex) => {
         const x =
           100 +
-          ((new Date(point.time).getTime() - minTime.value) / span) * 1052;
+          ((parseProjectDate(point.time).getTime() - minTime.value) / span) * 1052;
         const y =
           35 + ((maxValue.value - Number(point.value)) / valueSpan) * 255;
         return {
@@ -316,7 +317,7 @@ const normalizedSeries = computed(() => {
         const previous = dots[pointIndex - 1];
         if (
           previous &&
-          new Date(point.time) - new Date(previous.time) > props.gapThresholdMs
+          parseProjectDate(point.time) - parseProjectDate(previous.time) > props.gapThresholdMs
         ) {
           if (current.length) segments.push(current.join(" "));
           current = [];
@@ -370,7 +371,7 @@ const timeTicks = computed(() => {
     return points[pointIndex];
   }).filter((point, index, list) => list.indexOf(point) === index);
   const ticks = visible.map((point) => {
-    const time = new Date(point.time);
+    const time = parseProjectDate(point.time);
     const label = new Intl.DateTimeFormat(
       "es-CO",
       props.timeTickFormat === "day-month"

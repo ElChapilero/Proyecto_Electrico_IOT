@@ -10,7 +10,7 @@
     </header>
     <div class="cards-row">
       <article
-        v-for="card in cards"
+        v-for="card in displayedCards"
         :key="card.label"
         class="metric-card metric-card-base page-card"
         :style="{ '--metric-accent': accent }"
@@ -34,6 +34,7 @@
       :average="average"
       :period="period"
       :metric-key="metricKey"
+      @point-selected="selectPoint"
     />
   </section>
 </template>
@@ -42,7 +43,8 @@
 import HistoricalLineChart from "./HistoricalLineChart.vue";
 import InfoPopover from "../common/InfoPopover.vue";
 import { metricInfoFor } from "../../utils/metricInfo";
-defineProps({
+import { computed, ref } from "vue";
+const props = defineProps({
   title: String,
   accent: String,
   cards: { type: Array, default: () => [] },
@@ -52,6 +54,28 @@ defineProps({
   period: { type: String, required: true },
   metricKey: { type: String, default: "potencia" },
 });
+const selectedPoint = ref(null);
+const displayedCards = computed(() => {
+  if (!selectedPoint.value) return props.cards;
+  const point = selectedPoint.value;
+  const periodLabel = point.periodLabel || "periodo seleccionado";
+  const value = formatCardValue(point.value, point.decimals);
+  const max = formatCardValue(point.maxValue, point.decimals);
+  const min = formatCardValue(point.minValue, point.decimals);
+  return [
+    { label: `Promedio de ${periodLabel}`, value, unit: props.chart.unit },
+    { label: `Máximo de ${periodLabel}`, value: max, unit: props.chart.unit },
+    { label: `Mínimo de ${periodLabel}`, value: min, unit: props.chart.unit },
+  ];
+});
+function formatCardValue(value, decimals = 2) {
+  return value === null || value === undefined || !Number.isFinite(Number(value))
+    ? "No disponible"
+    : Number(value).toLocaleString("es-CO", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+function selectPoint(point) {
+  selectedPoint.value = point;
+}
 </script>
 
 <style scoped>

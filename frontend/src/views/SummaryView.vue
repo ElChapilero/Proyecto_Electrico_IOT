@@ -190,7 +190,7 @@
             :cards="powerCards"
             :chart="{ title: 'Potencia', unit: 'W' }"
             :chart-points="chartPoints('promedio_potencia')"
-            :average="number(dashboard.summary.promedio_potencia)"
+            :average="seriesAverage('promedio_potencia')"
             :period="period"
           />
           <MetricSection
@@ -200,7 +200,7 @@
             :cards="voltageCards"
             :chart="{ title: 'Voltaje', unit: 'V' }"
             :chart-points="chartPoints('promedio_voltaje')"
-            :average="number(dashboard.summary.promedio_voltaje)"
+            :average="seriesAverage('promedio_voltaje')"
             :period="period"
           />
           <MetricSection
@@ -210,7 +210,7 @@
             :cards="currentCards"
             :chart="{ title: 'Corriente', unit: 'A' }"
             :chart-points="chartPoints('promedio_corriente')"
-            :average="number(dashboard.summary.promedio_corriente)"
+            :average="seriesAverage('promedio_corriente')"
             :period="period"
           />
           <MetricSection
@@ -220,7 +220,7 @@
             :cards="factorCards"
             :chart="{ title: 'Factor de potencia', unit: 'FP' }"
             :chart-points="chartPoints('promedio_factor_potencia')"
-            :average="number(dashboard.summary.promedio_factor_potencia)"
+            :average="seriesAverage('promedio_factor_potencia')"
             :period="period"
           />
         </section>
@@ -241,6 +241,7 @@ import MetricSection from "../components/summary/MetricSection.vue";
 import { tiempoRealApi } from "../services/tiempoRealApi";
 import { usePredioStore } from "../stores/predioStore";
 import { orderPanels, panelOptionLabel } from "../utils/panelOptions";
+import { parseProjectDate } from "../utils/chartDates";
 
 const predio = usePredioStore();
 const COMPARE_PANELS = "__compare-panels__";
@@ -337,91 +338,102 @@ function display(value, decimals = 2) {
         maximumFractionDigits: decimals,
       });
 }
-const energyCards = computed(() => [
-  {
-    label: "Consumo acumulado",
-    value: display(dashboard.value?.summary?.consumo_acumulado),
-    unit: "kWh",
-  },
-  {
-    label: "Energía inicial",
-    value: display(dashboard.value?.summary?.energia_inicial),
-    unit: "kWh",
-  },
-  {
-    label: "Mayor consumo",
-    value: formatPeak(dashboard.value?.summary?.periodo_mayor_consumo),
-    unit:
-      dashboard.value?.summary?.mayor_consumo == null
-        ? "Sin datos"
-        : `${display(dashboard.value.summary.mayor_consumo)} kWh`,
-  },
-]);
+const energyCards = computed(() => cardsForSeries("consumo_energia", "kWh"));
 const powerCards = computed(() =>
-  cardsFor("promedio_potencia", "min_potencia", "max_potencia", "W"),
+  cardsForSeries("promedio_potencia", "W"),
 );
 const voltageCards = computed(() =>
-  cardsFor("promedio_voltaje", "min_voltaje", "max_voltaje", "V"),
+  cardsForSeries("promedio_voltaje", "V"),
 );
 const currentCards = computed(() =>
-  cardsFor("promedio_corriente", "min_corriente", "max_corriente", "A"),
+  cardsForSeries("promedio_corriente", "A"),
 );
 const factorCards = computed(() =>
-  cardsFor(
-    "promedio_factor_potencia",
-    "min_factor_potencia",
-    "max_factor_potencia",
-    "FP",
-  ),
+  cardsForSeries("promedio_factor_potencia", "FP"),
 );
-const energyChart = { title: "Consumo de energía", unit: "kWh" };
-function cardsFor(avg, min, max, metricUnit) {
+const energyChart = { title: "Consumo de energía por hora", unit: "kWh" };
+function seriesValues(key) {
+  return (dashboard.value?.series || [])
+    .map((item) => Number(item[key]))
+    .filter((value) => Number.isFinite(value));
+}
+function seriesAverage(key) {
+  const values = seriesValues(key);
+  return values.length
+    ? values.reduce((sum, value) => sum + value, 0) / values.length
+    : null;
+}
+function cardsForSeries(key, metricUnit) {
+  const values = seriesValues(key);
+  if (!values.length)
+    return [
+      { label: "Promedio por hora", value: "—", unit: metricUnit },
+      { label: "Máximo por hora", value: "—", unit: metricUnit },
+      { label: "Mínimo por hora", value: "—", unit: metricUnit },
+    ];
+  const average = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const max = Math.max(...values);
+  const min = Math.min(...values);
   return [
     {
-      label: "Promedio",
-      value: display(
-        dashboard.value?.summary?.[avg],
-        metricUnit === "FP" ? 3 : 2,
-      ),
+      label: "Promedio por hora",
+      value: display(average, metricUnit === "FP" ? 3 : 2),
       unit: metricUnit,
     },
     {
-      label: "Máximo",
-      value: display(
-        dashboard.value?.summary?.[max],
-        metricUnit === "FP" ? 3 : 2,
-      ),
+      label: "Máximo por hora",
+      value: display(max, metricUnit === "FP" ? 3 : 2),
       unit: metricUnit,
     },
     {
-      label: "Mínimo",
-      value: display(
-        dashboard.value?.summary?.[min],
-        metricUnit === "FP" ? 3 : 2,
-      ),
+      label: "Mínimo por hora",
+      value: display(min, metricUnit === "FP" ? 3 : 2),
       unit: metricUnit,
     },
   ];
 }
 function chartPoints(key) {
+  const range = {
+    energia: { min: "min_energia", max: "max_energia" },
+    potencia: { min: "min_potencia", max: "max_potencia" },
+    voltaje: { min: "min_voltaje", max: "max_voltaje" },
+    corriente: { min: "min_corriente", max: "max_corriente" },
+    factor_potencia: { min: "min_factor_potencia", max: "max_factor_potencia" },
+  };
+  const metricKey = {
+    consumo_energia: "energia",
+    promedio_potencia: "potencia",
+    promedio_voltaje: "voltaje",
+    promedio_corriente: "corriente",
+    promedio_factor_potencia: "factor_potencia",
+  }[key];
+  const fields = range[metricKey];
   return (dashboard.value?.series || [])
-    .map((item) => ({ time: item.periodo, value: item[key] }))
+    .map((item) => {
+      return {
+        time: item.periodo,
+        value: item[key],
+        minValue: fields ? item[fields.min] : null,
+        maxValue: fields ? item[fields.max] : null,
+        decimals: metricKey === "factor_potencia" ? 3 : 2,
+        periodLabel: formatChartPeriod(item.periodo),
+        circuitName: selectedRecord.value?.circuit?.nombre || null,
+        panelName: selectedRecord.value?.panel?.nombre || null,
+      };
+    })
     .filter((item) => number(item.value) !== null);
 }
-function formatPeak(value) {
-  if (!value) return "—";
-  const date = new Date(value);
-  return period.value === "day"
-    ? new Intl.DateTimeFormat("es-CO", {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      }).format(date)
-    : new Intl.DateTimeFormat("es-CO", {
-        weekday: "short",
-        day: "2-digit",
-        month: "short",
-      }).format(date);
+function formatChartPeriod(value) {
+  const date = parseProjectDate(value);
+  if (!Number.isFinite(date.getTime())) return "el periodo seleccionado";
+  if (period.value === "day") {
+    const hour = Number(new Intl.DateTimeFormat("en-US", { hour: "2-digit", hourCycle: "h23", timeZone: "America/Bogota" }).format(date));
+    const hourLabel = hour === 0
+      ? "00:00"
+      : new Intl.DateTimeFormat("es-CO", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "America/Bogota" }).format(date);
+    return `la ${hourLabel}`;
+  }
+  return `el ${new Intl.DateTimeFormat("es-CO", { weekday: "long", day: "2-digit", month: "short", timeZone: "America/Bogota" }).format(date)}`;
 }
 function dateString(date) {
   return new Intl.DateTimeFormat("en-CA", {

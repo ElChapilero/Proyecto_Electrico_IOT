@@ -17,6 +17,7 @@
 <script setup>
 import { computed } from "vue";
 import RealtimeChart from "../realtime/RealtimeChart.vue";
+import { parseProjectDate } from "../../utils/chartDates";
 
 const props = defineProps({
   points: { type: Array, default: () => [] },
@@ -49,12 +50,12 @@ const metadata = {
       "Muestra la potencia promedio registrada por hora según los filtros seleccionados.",
   },
   energia: {
-    title: "Energía consumida histórica",
+    title: "Consumo de energía por hora",
     unit: "kWh",
     color: "#39FF14",
     field: "consumo_energia",
     explanation:
-      "Muestra la energía consumida en cada hora según los filtros seleccionados.",
+      "Muestra el consumo calculado por hora a partir de los datos horarios y los filtros seleccionados.",
   },
   factor_potencia: {
     title: "Aprovechamiento eléctrico histórico",
@@ -82,10 +83,10 @@ const series = computed(() => [
       }))
       .filter(
         (point) =>
-          Number.isFinite(new Date(point.time).getTime()) &&
+          Number.isFinite(parseProjectDate(point.time).getTime()) &&
           Number.isFinite(point.value),
       )
-      .sort((a, b) => new Date(a.time) - new Date(b.time)),
+      .sort((a, b) => parseProjectDate(a.time) - parseProjectDate(b.time)),
   },
 ]);
 </script>
