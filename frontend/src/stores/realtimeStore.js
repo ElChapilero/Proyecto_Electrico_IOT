@@ -5,6 +5,7 @@ import { storage } from "../utils/storage";
 const state = reactive({
   status: "desconectado",
   ultimaMedicion: null,
+  ultimaVerificacionMediciones: null,
   ultimoEstadoDispositivo: null,
   ultimaAlerta: null,
   error: "",
@@ -35,6 +36,7 @@ function connect() {
   });
   socket.on("mensaje-mqtt", (payload) => {
     state.ultimaMedicion = payload;
+    state.ultimaVerificacionMediciones = payload?.verificacion || null;
   });
   socket.on("estado-dispositivo", (payload) => {
     state.ultimoEstadoDispositivo = payload;
@@ -68,6 +70,7 @@ function disconnect() {
   socket = null;
   state.status = "desconectado";
   state.ultimaMedicion = null;
+  state.ultimaVerificacionMediciones = null;
   state.ultimoEstadoDispositivo = null;
   state.ultimaAlerta = null;
   state.estructuraActualizada = null;

@@ -59,9 +59,10 @@ export const realtimeCharts = [
   },
 ];
 function toMeasurement(item, time) {
+  const measurementTime = item.created_at || item.fecha_hora || time;
   return {
-    id: item.id || `${time}-${item.circuito_id || item.circuito}`,
-    created_at: time,
+    id: item.id || `${measurementTime}-${item.circuito_id || item.circuito}`,
+    created_at: measurementTime,
     circuito_id: item.circuito_id,
     potencia: Number(item.potencia),
     energia: Number(item.energia),

@@ -53,6 +53,25 @@ function limpiarMensajesAntiguos() {
     }
   }
 }
+
+async function verificarMedicionesPersistidas(mediciones) {
+  const ids = [...new Set(
+    mediciones
+      .map((medicion) => medicion.id)
+      .filter(Boolean),
+  )];
+  if (!ids.length) return { idsVerificados: [], idsFaltantes: ids };
+
+  const resultado = await pool.query(
+    'SELECT id FROM mediciones WHERE id = ANY($1::uuid[])',
+    [ids],
+  );
+  const encontrados = new Set(resultado.rows.map((fila) => String(fila.id)));
+  return {
+    idsVerificados: ids.filter((id) => encontrados.has(String(id))),
+    idsFaltantes: ids.filter((id) => !encontrados.has(String(id))),
+  };
+}
 //evita procesar dos veces ciertos mensajes MQTT.
 function esMensajeDuplicado(uuidEsp32, timestampDispositivoMs) {
   limpiarMensajesAntiguos();
@@ -213,8 +232,10 @@ function iniciarMqttListener(io) {
         );
 
         medicionesGuardadas.push({
+          id: idMedicion,
           circuito: medidor.circuito,
           id_circuito: idCircuito,
+          created_at: fechaMedicion.toISOString(),
           voltaje: medidor.voltaje,
           corriente: medidor.corriente,
           potencia: medidor.potencia,
@@ -231,12 +252,38 @@ function iniciarMqttListener(io) {
     console.log(
       `📥 [${uuidEsp32}] paquete procesado: ${medicionesGuardadas.length} de ${listaMedidores.length} lecturas guardadas`
     );
+    let verificacion = {
+      completo: medicionesGuardadas.length === listaMedidores.length,
+      recibidas: listaMedidores.length,
+      guardadas: medicionesGuardadas.length,
+      verificadas: 0,
+      faltantes: medicionesGuardadas.length === listaMedidores.length ? 0 : listaMedidores.length - medicionesGuardadas.length,
+    };
+    try {
+      const resultadoVerificacion = await verificarMedicionesPersistidas(medicionesGuardadas);
+      verificacion = {
+        ...verificacion,
+        verificadas: resultadoVerificacion.idsVerificados.length,
+        faltantes: listaMedidores.length - resultadoVerificacion.idsVerificados.length,
+        completo:
+          resultadoVerificacion.idsFaltantes.length === 0 &&
+          medicionesGuardadas.length === listaMedidores.length,
+      };
+      if (!verificacion.completo) {
+        console.warn(
+          `⚠️ [${uuidEsp32}] verificación incompleta: ${verificacion.verificadas} de ${verificacion.recibidas} lecturas confirmadas en PostgreSQL`,
+        );
+      }
+    } catch (error) {
+      verificacion.error = "No se pudo verificar la persistencia en PostgreSQL";
+      console.error(`❌ [${uuidEsp32}] error verificando mediciones guardadas:`, error.message);
+    }
     // Reenvía por Socket.IO solo las mediciones guardadas en PostgreSQL.
     // Así no se muestran lecturas rechazadas ni fallidas, y no se usa io.emit() global.
 
     
     // Envía el evento solo a la sala del predio correspondiente.
-    if (medicionesGuardadas.length > 0 && infoDispositivo) {
+    if (infoDispositivo) {
       emitirMedicionGuardada(io, infoDispositivo.idPredio, {
         topic,
         uuid_esp32: uuidEsp32,
@@ -244,6 +291,7 @@ function iniciarMqttListener(io) {
         // Socket.IO usa la hora de recepción; PostgreSQL guarda fechaMedicion.
         timestamp: recibidoEn.toISOString(),
         timestamp_dispositivo_ms: datos.timestamp_ms ?? null,
+        verificacion,
       });
     }
     } catch (error) {
