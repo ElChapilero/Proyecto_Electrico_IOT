@@ -66,7 +66,7 @@
           :height="point.height"
           :fill="color"
           :class="{
-            'is-dimmed': selectedCircuitKey && selectedCircuitKey !== circuitKey(point),
+            'is-dimmed': selectedPointKey && selectedPointKey !== point.key,
             'is-point-selected': selectedPointKey === point.key,
           }"
           tabindex="0"

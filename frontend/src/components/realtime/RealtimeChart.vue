@@ -190,7 +190,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import {
   comparisonColor,
   comparisonMarkers,
@@ -370,6 +370,13 @@ function togglePointSelection(series, point) {
   selectedSeriesId.value = seriesId;
   selectedPointKey.value = pointKey;
 }
+function clearSelection() {
+  selectedSeriesId.value = null;
+  selectedPointKey.value = null;
+}
+function handleOutsideClick(event) {
+  if (!chartWrap.value?.contains(event.target)) clearSelection();
+}
 watch(
   () => props.series.map((series) => String(series.id || series.label)).join("|"),
   () => {
@@ -377,6 +384,8 @@ watch(
     selectedPointKey.value = null;
   },
 );
+onMounted(() => document.addEventListener("pointerdown", handleOutsideClick));
+onBeforeUnmount(() => document.removeEventListener("pointerdown", handleOutsideClick));
 const timeTicks = computed(() => {
   const points = normalizedSeries.value[0]?.dots || [];
   if (!points.length) return [];
