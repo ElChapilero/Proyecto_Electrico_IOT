@@ -107,6 +107,7 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import { chartTooltipPosition } from "../../utils/chartTooltip";
+import { formatVisualNumber } from "../../utils/numberFormatting";
 const props = defineProps({
   points: { type: Array, default: () => [] },
   variable: { type: String, required: true },
@@ -211,7 +212,7 @@ function formatDate(value) {
   }).format(new Date(value));
 }
 function formatValue(value) {
-  return Number(value).toLocaleString("es-CO", { maximumFractionDigits: 3 });
+  return formatVisualNumber(value);
 }
 function showTooltip(event, point) {
   const container = chartWrap.value?.getBoundingClientRect();

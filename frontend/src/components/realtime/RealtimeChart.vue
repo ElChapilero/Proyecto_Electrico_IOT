@@ -200,6 +200,7 @@ import { metricInfoFor } from "../../utils/metricInfo";
 import { parseProjectDate } from "../../utils/chartDates";
 import InterpretationCard from "../common/InterpretationCard.vue";
 import { buildInterpretation } from "../../utils/interpretation";
+import { formatVisualNumber } from "../../utils/numberFormatting";
 
 const props = defineProps({
   title: { type: String, required: true },
@@ -290,7 +291,7 @@ function formatTime(value) {
   return `${formatDate(value)} ${formatClock(value)}`;
 }
 function formatValue(value) {
-  return Number(value).toLocaleString("es-CO", { maximumFractionDigits: 3 });
+  return formatVisualNumber(value);
 }
 const yTicks = computed(() => {
   const span = Math.max(0.000001, maxValue.value - minValue.value);

@@ -1,11 +1,11 @@
 import { parseProjectDate } from "./chartDates";
 
 const metricLabels = {
-  energia: { name: "consumo", unit: "kWh", decimals: 2 },
-  potencia: { name: "potencia", unit: "W", decimals: 2 },
-  voltaje: { name: "voltaje", unit: "V", decimals: 2 },
-  corriente: { name: "corriente", unit: "A", decimals: 2 },
-  factor_potencia: { name: "factor de potencia", unit: "FP", decimals: 3 },
+  energia: { name: "consumo", unit: "kWh", decimals: 4 },
+  potencia: { name: "potencia", unit: "W", decimals: 4 },
+  voltaje: { name: "voltaje", unit: "V", decimals: 4 },
+  corriente: { name: "corriente", unit: "A", decimals: 4 },
+  factor_potencia: { name: "factor de potencia", unit: "FP", decimals: 4 },
 };
 
 function finite(value) {

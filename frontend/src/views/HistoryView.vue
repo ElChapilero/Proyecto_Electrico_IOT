@@ -150,6 +150,7 @@ import HistoryCharts from "../components/history/HistoryCharts.vue";
 import { tiempoRealApi } from "../services/tiempoRealApi";
 import { usePredioStore } from "../stores/predioStore";
 import { orderPanels, panelOptionLabel } from "../utils/panelOptions";
+import { formatVisualNumber } from "../utils/numberFormatting";
 
 const COMBINED_PANELS = "__combined-panels__";
 const COMBINED_CIRCUITS = "__combined-circuits__";
@@ -280,9 +281,7 @@ function formatDate(value) {
   }).format(new Date(value));
 }
 function display(value, unit) {
-  return value === null || value === undefined || Number.isNaN(Number(value))
-    ? "—"
-    : `${Number(value).toLocaleString("es-CO", { maximumFractionDigits: 3 })} ${unit}`;
+  return `${formatVisualNumber(value)} ${unit}`;
 }
 function rangeValue(value, end = false) {
   return value ? `${value}T${end ? "23:59:59.999" : "00:00:00"}-05:00` : null;

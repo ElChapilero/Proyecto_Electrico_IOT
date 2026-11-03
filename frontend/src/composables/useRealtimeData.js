@@ -1,18 +1,19 @@
 import { ref } from "vue";
 import { tiempoRealApi } from "../services/tiempoRealApi";
 import { orderPanels, panelOptionLabel } from "../utils/panelOptions";
+import { formatVisualNumber, VISUAL_DECIMALS } from "../utils/numberFormatting";
 
 const WINDOW_MINUTES = 5;
 export const realtimeMetrics = [
-  { key: "energia", label: "Energía", unit: "kWh", decimals: 3, color: "#39FF14" },
-  { key: "potencia", label: "Potencia", unit: "W", decimals: 2, color: "#DFFF00" },
-  { key: "voltaje", label: "Voltaje", unit: "V", decimals: 2, color: "#FF3131" },
-  { key: "corriente", label: "Corriente", unit: "A", decimals: 2, color: "#7B2CFF" },
+  { key: "energia", label: "Energía", unit: "kWh", decimals: VISUAL_DECIMALS, color: "#39FF14" },
+  { key: "potencia", label: "Potencia", unit: "W", decimals: VISUAL_DECIMALS, color: "#DFFF00" },
+  { key: "voltaje", label: "Voltaje", unit: "V", decimals: VISUAL_DECIMALS, color: "#FF3131" },
+  { key: "corriente", label: "Corriente", unit: "A", decimals: VISUAL_DECIMALS, color: "#7B2CFF" },
   {
     key: "factor_potencia",
     label: "Factor de potencia",
     unit: "FP",
-    decimals: 3,
+    decimals: VISUAL_DECIMALS,
     color: "#FF6A00",
   },
 ];
@@ -239,10 +240,5 @@ export function panelLabel(panel) {
   return panelOptionLabel(panel);
 }
 export function formatMetric(value, decimals) {
-  return value === null || value === undefined || Number.isNaN(Number(value))
-    ? "—"
-    : Number(value).toLocaleString("es-CO", {
-        minimumFractionDigits: decimals,
-        maximumFractionDigits: decimals,
-      });
+  return formatVisualNumber(value, decimals);
 }

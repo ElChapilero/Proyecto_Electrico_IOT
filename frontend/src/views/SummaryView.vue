@@ -242,6 +242,7 @@ import { tiempoRealApi } from "../services/tiempoRealApi";
 import { usePredioStore } from "../stores/predioStore";
 import { orderPanels, panelOptionLabel } from "../utils/panelOptions";
 import { parseProjectDate } from "../utils/chartDates";
+import { formatVisualNumber, VISUAL_DECIMALS } from "../utils/numberFormatting";
 
 const predio = usePredioStore();
 const COMPARE_PANELS = "__compare-panels__";
@@ -330,13 +331,8 @@ const number = (value) =>
   value === null || value === undefined || Number.isNaN(Number(value))
     ? null
     : Number(value);
-function display(value, decimals = 2) {
-  return value === null || value === undefined || Number.isNaN(Number(value))
-    ? "—"
-    : Number(value).toLocaleString("es-CO", {
-        minimumFractionDigits: decimals,
-        maximumFractionDigits: decimals,
-      });
+function display(value) {
+  return formatVisualNumber(value);
 }
 const energyCards = computed(() => cardsForSeries("consumo_energia", "kWh"));
 const powerCards = computed(() =>
@@ -391,17 +387,17 @@ function cardsForSeries(key, metricUnit) {
   return [
     {
       label: "Promedio por hora",
-      value: display(average, metricUnit === "FP" ? 3 : 2),
+      value: display(average),
       unit: metricUnit,
     },
     {
       label: "Máximo por hora",
-      value: display(max, metricUnit === "FP" ? 3 : 2),
+      value: display(max),
       unit: metricUnit,
     },
     {
       label: "Mínimo por hora",
-      value: display(min, metricUnit === "FP" ? 3 : 2),
+      value: display(min),
       unit: metricUnit,
     },
   ];
@@ -429,7 +425,7 @@ function chartPoints(key) {
         value: item[key],
         minValue: fields ? item[fields.min] : null,
         maxValue: fields ? item[fields.max] : null,
-        decimals: metricKey === "factor_potencia" ? 3 : 2,
+        decimals: VISUAL_DECIMALS,
         periodLabel: formatChartPeriod(item.periodo),
         circuitName: selectedRecord.value?.circuit?.nombre || null,
         panelName: selectedRecord.value?.panel?.nombre || null,

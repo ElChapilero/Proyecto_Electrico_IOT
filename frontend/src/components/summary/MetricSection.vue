@@ -43,6 +43,7 @@
 import HistoricalLineChart from "./HistoricalLineChart.vue";
 import InfoPopover from "../common/InfoPopover.vue";
 import { metricInfoFor } from "../../utils/metricInfo";
+import { formatVisualNumber } from "../../utils/numberFormatting";
 import { computed, ref } from "vue";
 const props = defineProps({
   title: String,
@@ -68,10 +69,9 @@ const displayedCards = computed(() => {
     { label: `Mínimo de ${periodLabel}`, value: min, unit: props.chart.unit },
   ];
 });
-function formatCardValue(value, decimals = 2) {
-  return value === null || value === undefined || !Number.isFinite(Number(value))
-    ? "No disponible"
-    : Number(value).toLocaleString("es-CO", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+function formatCardValue(value) {
+  const formatted = formatVisualNumber(value);
+  return formatted === "—" ? "No disponible" : formatted;
 }
 function selectPoint(point) {
   selectedPoint.value = point;

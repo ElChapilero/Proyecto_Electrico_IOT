@@ -167,6 +167,7 @@
 <script setup>
 import InfoPopover from "../common/InfoPopover.vue";
 import { metricInfoFor } from "../../utils/metricInfo";
+import { formatVisualNumber } from "../../utils/numberFormatting";
 import { computed, ref, watch } from "vue";
 import { chartTooltipPosition } from "../../utils/chartTooltip";
 import {
@@ -269,7 +270,7 @@ watch(
   },
 );
 function formatValue(value) {
-  return Number(value).toLocaleString("es-CO", { maximumFractionDigits: 2 });
+  return formatVisualNumber(value);
 }
 function formatDate(value) {
   if (!value) return "Fecha no disponible";

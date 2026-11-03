@@ -44,6 +44,7 @@
 
 <script setup>
 import { computed, ref, watch } from "vue";
+import { formatVisualNumber } from "../../utils/numberFormatting";
 
 const props = defineProps({
   rows: { type: Array, default: () => [] },
@@ -104,13 +105,10 @@ watch(
   },
 );
 function formatValue(value) {
-  return Number(value).toLocaleString("es-CO", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  return formatVisualNumber(value);
 }
 function formatPercent(value) {
-  return Number(value).toLocaleString("es-CO", { maximumFractionDigits: 1 });
+  return formatVisualNumber(value);
 }
 </script>
 

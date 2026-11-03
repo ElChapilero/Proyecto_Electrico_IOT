@@ -134,6 +134,7 @@ import { chartTooltipPosition } from "../../utils/chartTooltip";
 import InfoPopover from "../common/InfoPopover.vue";
 import { metricInfoFor } from "../../utils/metricInfo";
 import { parseProjectDate } from "../../utils/chartDates";
+import { formatVisualNumber } from "../../utils/numberFormatting";
 import InterpretationCard from "../common/InterpretationCard.vue";
 import { buildInterpretation } from "../../utils/interpretation";
 
@@ -201,7 +202,7 @@ const valueSpan = computed(() =>
 );
 const timeSpan = computed(() => Math.max(1, maxTime.value - minTime.value));
 function formatValue(value) {
-  return Number(value).toLocaleString("es-CO", { maximumFractionDigits: 3 });
+  return formatVisualNumber(value);
 }
 function formatTooltipDate(value) {
   const date = parseProjectDate(value);
