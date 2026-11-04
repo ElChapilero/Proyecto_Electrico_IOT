@@ -174,24 +174,40 @@ export function useRealtimeData(predioId) {
   }
   function applyLivePayload(payload) {
     const time = payload?.timestamp || new Date().toISOString();
+    const updates = new Map();
+
+    // Socket.IO entrega un solo payload por paquete guardado. Primero se
+    // prepara todo el lote y luego se reemplazan los registros una sola vez,
+    // evitando que la gráfica renderice circuitos en momentos intermedios.
     for (const item of payload?.medidores || []) {
       const record = records.value.find(
         (candidate) => candidate.circuit.id === item.id_circuito,
       );
       if (!record) continue;
-      const measurement = toMeasurement(item, time);
-      record.measurements = [
+      // El tiempo del evento representa el lote completo en la vista. Los
+      // valores numéricos originales no se modifican.
+      const measurement = toMeasurement({ ...item, created_at: time }, time);
+      updates.set(item.id_circuito, measurement);
+    }
+
+    if (!updates.size) return;
+
+    const cutoff = Date.now() - WINDOW_MINUTES * 60 * 1000 - 15000;
+    records.value = records.value.map((record) => {
+      const measurement = updates.get(record.circuit.id);
+      if (!measurement) return record;
+      const measurements = [
         ...record.measurements.filter((old) => old.id !== measurement.id),
         measurement,
       ]
-        .filter(
-          (old) =>
-            Date.now() - new Date(old.created_at).getTime() <=
-            WINDOW_MINUTES * 60 * 1000 + 15000,
-        )
+        .filter((old) => new Date(old.created_at).getTime() >= cutoff)
         .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-      record.latest = record.measurements.at(-1) || null;
-    }
+      return {
+        ...record,
+        measurements,
+        latest: measurements.at(-1) || null,
+      };
+    });
   }
   function chartSeries(metric, visibleRecords, rangeMinutes) {
     const cutoff = Date.now() - rangeMinutes.value * 60 * 1000;

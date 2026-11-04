@@ -2,7 +2,7 @@
   <div class="home-view">
     <section class="hero page-card">
       <div class="hero-copy">
-        <span class="eyebrow">Bienvenido a Vatio</span>
+        <span class="eyebrow">Bienvenido a <BrandWordmark /></span>
         <h2>Tu energía, más clara y conectada.</h2>
         <p>
           Monitorea el comportamiento eléctrico de tu hogar
@@ -125,6 +125,7 @@
   </div>
 </template>
 <script setup>
+import BrandWordmark from "../components/common/BrandWordmark.vue";
 import { ref } from "vue";
 import BaseModal from "../components/common/BaseModal.vue";
 

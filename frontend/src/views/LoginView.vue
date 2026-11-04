@@ -1,7 +1,7 @@
 <template>
   <main class="auth-page">
     <section class="auth-card page-card">
-      <div class="brand">Vatio<span>·</span></div>
+      <div class="brand"><BrandWordmark /></div>
       <p class="kicker">Monitoreo eléctrico</p>
       <h1>Bienvenido de nuevo</h1>
       <p class="intro">Ingresa para revisar el estado de tus predios.</p>
@@ -33,6 +33,7 @@
   </main>
 </template>
 <script setup>
+import BrandWordmark from "../components/common/BrandWordmark.vue";
 import { ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import BaseInput from "../components/common/BaseInput.vue";

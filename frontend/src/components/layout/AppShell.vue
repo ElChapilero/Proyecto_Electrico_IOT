@@ -4,7 +4,7 @@
     <div class="main">
       <header class="topbar">
         <div class="brand">
-          <span class="brand-mark">🗲</span><span>Vatio</span>
+          <span class="brand-mark">🗲</span><BrandWordmark />
         </div>
         <nav class="top-nav desktop-only" aria-label="Navegación principal">
           <router-link
@@ -68,6 +68,7 @@
   </div>
 </template>
 <script setup>
+import BrandWordmark from "../common/BrandWordmark.vue";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import PredioSelector from "../selectors/PredioSelector.vue";

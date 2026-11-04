@@ -16,6 +16,22 @@ body,
 body {
   min-height: 100dvh;
 }
+
+@font-face {
+  font-family: "STCaiyun";
+  src: url("../fonts/chinese.stcaiyun.woff") format("woff");
+  font-display: swap;
+}
+
+.brand-wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  white-space: nowrap;
+}
+
+.brand-wordmark__t {
+  font-family: "STCaiyun", var(--font-display);
+}
 h1,
 h2,
 h3,
